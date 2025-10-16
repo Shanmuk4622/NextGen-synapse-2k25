@@ -1,19 +1,45 @@
+
 import Image from "next/image";
 import Link from "next/link";
-import type { Course } from "@/lib/types";
+import type { Course, User } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { getTeacherById } from "@/lib/data";
 import { Clock, UserCircle } from "lucide-react";
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
 
 type CourseCardProps = {
   course: Course;
 };
 
+function TeacherProfile({ teacherId }: { teacherId: string }) {
+  const firestore = useFirestore();
+  const teacherRef = useMemoFirebase(() => {
+    if (!firestore || !teacherId) return null;
+    return doc(firestore, 'users', teacherId);
+  }, [firestore, teacherId]);
+
+  const { data: teacher, isLoading } = useDoc<User>(teacherRef);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-4 rounded-full bg-muted animate-pulse" />
+        <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <UserCircle className="h-4 w-4" />
+      <span>{teacher?.name || 'N/A'}</span>
+    </div>
+  );
+}
+
 export function CourseCard({ course }: CourseCardProps) {
-  const teacher = getTeacherById(course.teacherId);
   const placeholder = PlaceHolderImages.find(p => p.id === course.imageId);
 
   return (
@@ -40,10 +66,7 @@ export function CourseCard({ course }: CourseCardProps) {
           <p className="text-muted-foreground text-sm line-clamp-3">{course.description}</p>
         </CardContent>
         <CardFooter className="flex justify-between items-center p-4 pt-0 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <UserCircle className="h-4 w-4" />
-            <span>{teacher?.name || 'N/A'}</span>
-          </div>
+          <TeacherProfile teacherId={course.teacherId} />
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             <span>{course.duration}</span>

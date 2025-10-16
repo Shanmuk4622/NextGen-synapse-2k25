@@ -3,7 +3,6 @@
 
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { getTeacherById, getAssignmentsByCourse } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,10 +11,31 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, UserCircle, BookOpen, FileText, CheckCircle } from "lucide-react";
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { doc, collection, query, where, addDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
-import type { Course, Enrollment } from '@/lib/types';
+import type { Course, Enrollment, User } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 import React, { useEffect, useState } from "react";
+
+function TeacherProfile({ teacherId }: { teacherId: string }) {
+  const firestore = useFirestore();
+  const teacherRef = useMemoFirebase(() => {
+    if (!firestore || !teacherId) return null;
+    return doc(firestore, 'users', teacherId);
+  }, [firestore, teacherId]);
+
+  const { data: teacher, isLoading } = useDoc<User>(teacherRef);
+
+  if (isLoading) {
+    return <span>Loading...</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <UserCircle className="h-5 w-5" />
+      <span>{teacher?.name || 'N/A'}</span>
+    </div>
+  );
+}
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
   const id = React.use(params).id;
@@ -84,18 +104,18 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     }
   };
 
-  if (isCourseLoading || areEnrollmentsLoading) {
+  const isLoading = isCourseLoading || areEnrollmentsLoading;
+
+  if (isLoading) {
       return <div>Loading...</div>;
   }
   
   if (!course) {
     notFound();
   }
-
-  const teacher = getTeacherById(course.teacherId);
+  
   const placeholder = PlaceHolderImages.find(p => p.id === course.imageId);
-  const assignments = getAssignmentsByCourse(course.id);
-
+  
   return (
     <div className="bg-card">
       {/* Hero Section */}
@@ -114,10 +134,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         <div className="container relative z-10 h-full flex flex-col justify-end pb-12">
           <h1 className="font-headline text-4xl md:text-6xl font-bold text-primary-foreground">{course.title}</h1>
           <div className="flex items-center gap-4 mt-4 text-primary-foreground/90">
-            <div className="flex items-center gap-2">
-              <UserCircle className="h-5 w-5" />
-              <span>{teacher?.name}</span>
-            </div>
+            <TeacherProfile teacherId={course.teacherId} />
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
               <span>{course.duration}</span>
@@ -146,33 +163,10 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                 <BookOpen className="h-6 w-6 text-primary" />
                 Course Content & Assignments
               </h2>
-              {isEnrolled ? (
-                 <div className="space-y-4">
-                  {assignments.map(assignment => (
-                    <Card key={assignment.id} className="hover:bg-background/80 transition-colors">
-                      <CardContent className="p-4 flex items-center justify-between">
-                        <div className="flex items-start gap-4">
-                           <FileText className="h-5 w-5 mt-1 text-primary" />
-                          <div>
-                            <h3 className="font-semibold">{assignment.title}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{assignment.description}</p>
-                             <p className="text-xs text-muted-foreground mt-1">Due: {assignment.dueDate.toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <Badge variant={Math.random() > 0.5 ? "default" : "secondary"}>{Math.random() > 0.5 ? "Submitted" : "Not Submitted"}</Badge>
-                          <Button size="sm" variant="outline">View</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                 </div>
-              ) : (
-                <div className="text-center py-12 border-2 border-dashed rounded-lg">
+              <div className="text-center py-12 border-2 border-dashed rounded-lg">
                   <h3 className="text-lg font-semibold">Enroll to view assignments</h3>
                   <p className="mt-2 text-sm text-muted-foreground">Once you enroll, all course materials and assignments will be available here.</p>
-                </div>
-              )}
+              </div>
             </div>
           </div>
 
