@@ -1,18 +1,54 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Users, BookOpen } from "lucide-react";
-import { courses, getEnrollmentsByCourse, users } from "@/lib/data";
-
-// Mock current user
-const currentUser = users.find(u => u.id === 'user-3');
+import { courses, getEnrollmentsByCourse } from "@/lib/data";
+import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
+import { useEffect, useState } from "react";
+import type { User as AppUser } from "@/lib/types";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function TeacherDashboardPage() {
-  if (!currentUser || currentUser.role !== 'teacher') {
-    return <div>Access Denied. You must be a teacher to view this page.</div>;
-  }
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
 
-  const teacherCourses = courses.filter(c => c.teacherId === currentUser.id);
+  const userDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, 'users', user.uid) : null),
+    [user, firestore]
+  );
+
+  useEffect(() => {
+    if (userDocRef) {
+      getDoc(userDocRef).then(docSnap => {
+        if (docSnap.exists()) {
+          setAppUser(docSnap.data() as AppUser);
+        }
+      });
+    } else {
+      setAppUser(null);
+    }
+  }, [userDocRef]);
+  
+  const teacherCourses = appUser ? courses.filter(c => c.teacherId === appUser.id) : [];
+
+  if (isUserLoading || (user && !appUser)) {
+    return <div>Loading...</div>;
+  }
+  
+  if (!user || !appUser || appUser.role !== 'teacher') {
+    return (
+        <div className="container text-center py-12">
+            <h2 className="font-headline text-2xl">Access Denied</h2>
+            <p className="text-muted-foreground mt-2">You must be logged in as a teacher to view this page.</p>
+            <Button asChild className="mt-4">
+                <Link href="/login">Log In</Link>
+            </Button>
+        </div>
+    );
+  }
 
   return (
     <div className="container py-8 md:py-12">

@@ -1,12 +1,13 @@
+"use client";
+
 import { notFound } from "next/navigation";
-import { getCourseById, getEnrollmentsByCourse, getStudentById, getAssignmentsByCourse, getSubmissionsForAssignment, users } from "@/lib/data";
+import { getCourseById, getEnrollmentsByCourse, getStudentById, getAssignmentsByCourse, getSubmissionsForAssignment } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PlusCircle, Users, BookOpen, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
 import {
   Dialog,
   DialogContent,
@@ -14,15 +15,43 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
+import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
+import { useEffect, useState } from "react";
+import type { User as AppUser } from "@/lib/types";
+import { doc, getDoc } from "firebase/firestore";
+import Link from "next/link";
 
-
-// Mock current user
-const currentUser = users.find(u => u.id === 'user-3');
 
 export default function TeacherCoursePage({ params }: { params: { id: string } }) {
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
+
+  const userDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, 'users', user.uid) : null),
+    [user, firestore]
+  );
+
+  useEffect(() => {
+    if (userDocRef) {
+      getDoc(userDocRef).then(docSnap => {
+        if (docSnap.exists()) {
+          setAppUser(docSnap.data() as AppUser);
+        }
+      });
+    } else {
+      setAppUser(null);
+    }
+  }, [userDocRef]);
+
   const course = getCourseById(params.id);
-  if (!course || !currentUser || course.teacherId !== currentUser.id) {
+
+  if (isUserLoading || (user && !appUser)) {
+    return <div>Loading...</div>;
+  }
+
+  if (!course || !appUser || course.teacherId !== appUser.id) {
     notFound();
   }
 

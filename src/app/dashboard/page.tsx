@@ -1,23 +1,62 @@
+"use client";
+
 import Link from 'next/link';
 import { BookOpen, CheckCircle, Clock } from 'lucide-react';
 import { PersonalizedLearning } from '@/components/dashboard/PersonalizedLearning';
-import { getStudentCourses, getTeacherById, users } from '@/lib/data';
+import { getStudentCourses, getTeacherById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-
-// Mock current user
-const currentUser = users.find(u => u.id === 'user-1');
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useEffect, useState } from 'react';
+import type { User as AppUser, Course } from '@/lib/types';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function DashboardPage() {
-  if (!currentUser) return <div>Please log in to see your dashboard.</div>;
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
 
-  const enrolledCourses = getStudentCourses(currentUser.id);
+  const userDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, 'users', user.uid) : null),
+    [user, firestore]
+  );
+
+  useEffect(() => {
+    if (userDocRef) {
+      getDoc(userDocRef).then(docSnap => {
+        if (docSnap.exists()) {
+          setAppUser(docSnap.data() as AppUser);
+        }
+      });
+    } else {
+      setAppUser(null);
+    }
+  }, [userDocRef]);
+  
+  if (isUserLoading || (user && !appUser)) {
+    return <div>Loading...</div>;
+  }
+  
+  if (!user || !appUser) {
+    return (
+      <div className="container text-center py-12">
+        <h2 className="font-headline text-2xl">Please log in</h2>
+        <p className="text-muted-foreground mt-2">You need to be logged in to view your dashboard.</p>
+        <Button asChild className="mt-4">
+          <Link href="/login">Log In</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // TODO: Replace with real data from Firestore
+  const enrolledCourses = getStudentCourses(appUser.id);
 
   return (
     <div className="container py-8 md:py-12">
       <div className="mb-8">
-        <h1 className="font-headline text-3xl md:text-4xl font-bold">Welcome back, {currentUser.name.split(' ')[0]}!</h1>
+        <h1 className="font-headline text-3xl md:text-4xl font-bold">Welcome back, {appUser.name.split(' ')[0]}!</h1>
         <p className="text-muted-foreground mt-2 text-lg">Let's continue your learning journey.</p>
       </div>
 

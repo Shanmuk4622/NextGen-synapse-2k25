@@ -1,18 +1,20 @@
+"use client";
+
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { getCourseById, getTeacherById, getAssignmentsByCourse, enrollments, users } from "@/lib/data";
+import { getCourseById, getTeacherById, getAssignmentsByCourse, enrollments } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Clock, UserCircle, BookOpen, FileText, CheckCircle } from "lucide-react";
-
-// Mock current user
-const currentUser = users.find(u => u.id === 'user-1');
+import { useUser } from "@/firebase";
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
+  const { user } = useUser();
   const course = getCourseById(params.id);
+
   if (!course) {
     notFound();
   }
@@ -20,7 +22,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const teacher = getTeacherById(course.teacherId);
   const placeholder = PlaceHolderImages.find(p => p.id === course.imageId);
   const assignments = getAssignmentsByCourse(course.id);
-  const isEnrolled = currentUser ? enrollments.some(e => e.courseId === course.id && e.studentId === currentUser.id) : false;
+  const isEnrolled = user ? enrollments.some(e => e.courseId === course.id && e.studentId === user.uid) : false;
 
   return (
     <div className="bg-card">

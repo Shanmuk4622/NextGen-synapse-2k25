@@ -5,6 +5,9 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc } from "firebase/firestore";
+import { useAuth, useFirestore, setDocumentNonBlocking } from "@/firebase";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +45,8 @@ const formSchema = z.object({
 export function RegisterForm() {
   const { toast } = useToast();
   const router = useRouter();
+  const auth = useAuth();
+  const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,13 +58,34 @@ export function RegisterForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: "Registration Successful",
-      description: "Your account has been created. Please log in.",
-    });
-    router.push("/login");
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      const userDocRef = doc(firestore, "users", user.uid);
+      const userData = {
+        id: user.uid,
+        name: values.name,
+        email: values.email,
+        role: values.role,
+      };
+
+      setDocumentNonBlocking(userDocRef, userData, { merge: true });
+
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created. Please log in.",
+      });
+      router.push("/login");
+    } catch (error: any) {
+      console.error("Registration failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Registration Failed",
+        description: error.message || "An unexpected error occurred.",
+      });
+    }
   }
 
   return (
@@ -133,8 +159,8 @@ export function RegisterForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
-              Create an account
+            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+               {form.formState.isSubmitting ? "Creating Account..." : "Create an account"}
             </Button>
           </form>
         </Form>

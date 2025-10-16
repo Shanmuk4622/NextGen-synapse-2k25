@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { GraduationCap, LogIn, Menu, UserPlus } from "lucide-react";
+import { GraduationCap, LogIn, LogOut, Menu, UserPlus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { useState } from "react";
+import { useUser, useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 const navLinks = [
   { href: "/#courses", label: "Courses" },
@@ -21,7 +25,14 @@ const navLinks = [
 
 export function Header() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const isAuthenticated = false; // Mock authentication state
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/');
+  };
 
   const renderNavLinks = (isMobile: boolean) =>
     navLinks.map((link) => (
@@ -46,17 +57,29 @@ export function Header() {
           {renderNavLinks(false)}
         </nav>
         <div className="flex flex-1 items-center justify-end gap-2">
-          {isAuthenticated ? (
+          {isUserLoading ? (
+             <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+          ) : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  {/* Avatar here */}
+                  <Avatar className="h-8 w-8">
+                    {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || 'User'} />}
+                    <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
+                  </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuItem>Profile</DropdownMenuItem>
+                 <DropdownMenuItem disabled>
+                  <p className="font-medium">{user.displayName || user.email}</p>
+                 </DropdownMenuItem>
+                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push('/dashboard')}>Dashboard</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Log out</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -91,18 +114,27 @@ export function Header() {
                 </Link>
                 {renderNavLinks(true)}
                 <div className="flex flex-col gap-2 pt-4 border-t">
-                   <Button variant="ghost" asChild>
-                    <Link href="/login" onClick={() => setIsSheetOpen(false)}>
-                      <LogIn />
-                      Log In
-                    </Link>
-                  </Button>
-                  <Button asChild>
-                    <Link href="/register" onClick={() => setIsSheetOpen(false)}>
-                      <UserPlus />
-                      Sign Up
-                    </Link>
-                  </Button>
+                  {user ? (
+                     <Button variant="ghost" onClick={() => { handleLogout(); setIsSheetOpen(false); }}>
+                      <LogOut />
+                      Log Out
+                    </Button>
+                  ) : (
+                    <>
+                      <Button variant="ghost" asChild>
+                        <Link href="/login" onClick={() => setIsSheetOpen(false)}>
+                          <LogIn />
+                          Log In
+                        </Link>
+                      </Button>
+                      <Button asChild>
+                        <Link href="/register" onClick={() => setIsSheetOpen(false)}>
+                          <UserPlus />
+                          Sign Up
+                        </Link>
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </SheetContent>
