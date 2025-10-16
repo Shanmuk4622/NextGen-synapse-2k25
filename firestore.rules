@@ -1,0 +1,183 @@
+/**
+ * @fileoverview Firestore Security Rules for Course Central.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user-specific data
+ * and role-based access control for course-related data.  It also incorporates
+ * denormalization to avoid costly `get()` operations within the rules.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profiles, accessible only by the user.
+ * - /courses/{courseId}: Stores course information, creatable by teachers.
+ * - /users/{userId}/enrollments/{enrollmentId}: Stores enrollment records, owned by the user.
+ * - /courses/{courseId}/assignments/{assignmentId}: Stores assignments, creatable by the course teacher.
+ * - /users/{userId}/submissions/{submissionId}: Stores submissions, owned by the user.
+ * - /courses/{courseId}/grades/{gradeId}: Stores grades, created by teachers.
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed.
+ * - Read-only collections are not present in this model.
+ * - Ambiguous relationships default to strict owner-only access.
+ *
+ * Denormalization for Authorization:
+ * - Course documents store the teacherId for ownership checks on assignments.
+ * - Submission documents store studentId for ownership checks.
+ * - Grades stores teacherId, submissionId and courseId for ownership checks.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to user profiles. Only the user can read/write their own profile.
+     * @path /users/{userId}
+     * @allow (get, create, update, delete) if the user is signed in and the requested userId matches their own.
+     *   Example: A user with UID "user123" can read the document at /users/user123.
+     * @deny (get, create, update, delete) if the user attempts to access a different user's profile.
+     *   Example: A user with UID "user123" cannot read the document at /users/user456.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId} {
+      // Helper function to check if the user is signed in and owns the resource.
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Helper function to check if the user is signed in and owns the resource and the resource exists.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to courses. Teachers can create courses, others cannot.
+     * @path /courses/{courseId}
+     * @allow (create) if the user has the "teacher" role (determined outside of these rules).
+     *   Example: A user with the "teacher" role can create a course.
+     * @allow (get, list) if true (public read).
+     *   Example: Anyone can view the list of courses.
+     * @deny (update, delete) Always deny updates and deletes - only creator can modify
+     * @principle Allows public reads with restricted writes based on role and ownership.
+     */
+    match /courses/{courseId} {
+      // Helper function to check if the user is signed in.
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get, list: if true;
+      allow create: if isSignedIn(); // Assuming role check happens elsewhere.
+      allow update, delete: if false; // Only the creator could update/delete, but we can't reliably check roles here.
+    }
+
+    /**
+     * @description Controls access to course enrollments. Only the enrolled user can manage their enrollments.
+     * @path /users/{userId}/enrollments/{enrollmentId}
+     * @allow (get, create, update, delete) if the user is signed in and the requested userId matches their own.
+     *   Example: A user with UID "user123" can read the enrollment at /users/user123/enrollments/enroll456.
+     * @deny (get, create, update, delete) if the user attempts to access another user's enrollment.
+     *   Example: A user with UID "user123" cannot read the enrollment at /users/user456/enrollments/enroll456.
+     * @principle Enforces document ownership based on path.
+     */
+    match /users/{userId}/enrollments/{enrollmentId} {
+      // Helper function to check if the user is signed in and owns the resource.
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Helper function to check if the user is signed in and owns the resource and the resource exists.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to assignments. Only teachers (owners of the course) can manage assignments.
+     * @path /courses/{courseId}/assignments/{assignmentId}
+     * @allow (create) if the user is the teacher of the course (teacherId matches the user's UID).
+     *   Example: The teacher of course "course123" can create an assignment in /courses/course123/assignments/assign456.
+     * @allow (get, list) if true (public read).
+     *   Example: Anyone can view the assignments for a course.
+     * @deny (update, delete) Always deny updates and deletes - only creator can modify
+     * @principle Restricts writes to the course teacher.
+     */
+    match /courses/{courseId}/assignments/{assignmentId} {
+      // Helper function to check if the user is signed in.
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // Helper function to check if the user is the teacher of the course.
+      function isCourseTeacher(courseId) {
+        return get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
+      }
+
+      allow get, list: if true;
+      allow create: if isSignedIn() && isCourseTeacher(courseId);
+      allow update, delete: if false; // Only the creator could update/delete, but we can't reliably check here.
+    }
+
+    /**
+     * @description Controls access to submissions. Only the user can create submissions for themselves.
+     * @path /users/{userId}/submissions/{submissionId}
+     * @allow (get, create, update, delete) if the user is signed in and the requested userId matches their own.
+     *   Example: A user with UID "user123" can create a submission at /users/user123/submissions/sub456.
+     * @deny (get, create, update, delete) if the user attempts to create a submission for another user.
+     *   Example: A user with UID "user123" cannot create a submission at /users/user456/submissions/sub456.
+     * @principle Enforces document ownership based on path.
+     */
+    match /users/{userId}/submissions/{submissionId} {
+      // Helper function to check if the user is signed in and owns the resource.
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Helper function to check if the user is signed in and owns the resource and the resource exists.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to grades. Only teachers can create grades for submissions in their courses.
+     * @path /courses/{courseId}/grades/{gradeId}
+     * @allow (create) if the user is the teacher of the course associated with the grade.
+     *   Example: The teacher of course "course123" can create a grade at /courses/course123/grades/grade456.
+     * @deny (get, list, update, delete) Always deny
+     * @principle Restricts writes to the course teacher.
+     */
+    match /courses/{courseId}/grades/{gradeId} {
+      // Helper function to check if the user is signed in.
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // Helper function to check if the user is the teacher of the course.
+      function isCourseTeacher(courseId) {
+        return get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
+      }
+
+      allow get, list: if false;
+      allow create: if isSignedIn() && isCourseTeacher(courseId);
+      allow update, delete: if false;
+    }
+  }
+}

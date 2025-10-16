@@ -1,0 +1,330 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Course Central system, either a student or a teacher.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user (Student or Teacher)."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "role"
+      ]
+    },
+    "Course": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Course",
+      "type": "object",
+      "description": "Represents a course offered in the Learning Management System.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the course."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the course."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the course."
+        },
+        "duration": {
+          "type": "string",
+          "description": "The duration of the course (e.g., number of weeks)."
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "Reference to the User (Teacher) who created the course. (Relationship: User 1:N Course)"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "duration",
+        "teacherId"
+      ]
+    },
+    "Enrollment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Enrollment",
+      "type": "object",
+      "description": "Represents the enrollment of a student in a course.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the enrollment record."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to the User (Student) enrolled in the course. (Relationship: User 1:N Enrollment)"
+        },
+        "courseId": {
+          "type": "string",
+          "description": "Reference to the Course the student is enrolled in. (Relationship: Course 1:N Enrollment)"
+        },
+        "enrollmentDate": {
+          "type": "string",
+          "description": "The date the student enrolled in the course.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "courseId",
+        "enrollmentDate"
+      ]
+    },
+    "Assignment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Assignment",
+      "type": "object",
+      "description": "Represents an assignment for a specific course.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the assignment."
+        },
+        "courseId": {
+          "type": "string",
+          "description": "Reference to the Course the assignment belongs to. (Relationship: Course 1:N Assignment)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the assignment."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the assignment instructions."
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "The due date for the assignment.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "courseId",
+        "title",
+        "description",
+        "dueDate"
+      ]
+    },
+    "Submission": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Submission",
+      "type": "object",
+      "description": "Represents a student's submission for an assignment.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the submission."
+        },
+        "assignmentId": {
+          "type": "string",
+          "description": "Reference to the Assignment the submission is for. (Relationship: Assignment 1:N Submission)"
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to the User (Student) who submitted the assignment. (Relationship: User 1:N Submission)"
+        },
+        "submissionDate": {
+          "type": "string",
+          "description": "The date and time the assignment was submitted.",
+          "format": "date-time"
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the submission (e.g., a link to a file or text)."
+        }
+      },
+      "required": [
+        "id",
+        "assignmentId",
+        "studentId",
+        "submissionDate",
+        "content"
+      ]
+    },
+    "Grade": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Grade",
+      "type": "object",
+      "description": "Represents the grade given to a student for an assignment submission.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the grade."
+        },
+        "submissionId": {
+          "type": "string",
+          "description": "Reference to the Submission the grade is for. (Relationship: Submission 1:1 Grade)"
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "Reference to the User (Teacher) who gave the grade. (Relationship: User 1:N Grade)"
+        },
+        "grade": {
+          "type": "number",
+          "description": "The grade given for the submission (e.g., a number between 0 and 100)."
+        },
+        "feedback": {
+          "type": "string",
+          "description": "Feedback provided by the teacher on the submission."
+        }
+      },
+      "required": [
+        "id",
+        "submissionId",
+        "teacherId",
+        "grade"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Access is restricted to the user themselves.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/courses/{courseId}",
+        "definition": {
+          "entityName": "Course",
+          "schema": {
+            "$ref": "#/backend/entities/Course"
+          },
+          "description": "Stores course information. Teachers can create courses. The teacherId field indicates the owner.",
+          "params": [
+            {
+              "name": "courseId",
+              "description": "The unique identifier for the course."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/enrollments/{enrollmentId}",
+        "definition": {
+          "entityName": "Enrollment",
+          "schema": {
+            "$ref": "#/backend/entities/Enrollment"
+          },
+          "description": "Tracks course enrollments for each user.  Authorization relies on the userId path segment.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "enrollmentId",
+              "description": "The unique identifier for the enrollment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/courses/{courseId}/assignments/{assignmentId}",
+        "definition": {
+          "entityName": "Assignment",
+          "schema": {
+            "$ref": "#/backend/entities/Assignment"
+          },
+          "description": "Stores assignments for each course. Teachers who created the course can create assignments. The courseId field is denormalized here.",
+          "params": [
+            {
+              "name": "courseId",
+              "description": "The unique identifier for the course."
+            },
+            {
+              "name": "assignmentId",
+              "description": "The unique identifier for the assignment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/submissions/{submissionId}",
+        "definition": {
+          "entityName": "Submission",
+          "schema": {
+            "$ref": "#/backend/entities/Submission"
+          },
+          "description": "Stores student submissions. Authorization relies on the userId path segment, ensuring only the student can create submissions for themselves. assignmentId and courseId are denormalized into the submission document for querying and display purposes.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "submissionId",
+              "description": "The unique identifier for the submission."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/courses/{courseId}/grades/{gradeId}",
+        "definition": {
+          "entityName": "Grade",
+          "schema": {
+            "$ref": "#/backend/entities/Grade"
+          },
+          "description": "Stores grades for submissions.  teacherId who gave the grade are denormalized.",
+          "params": [
+            {
+              "name": "courseId",
+              "description": "The unique identifier for the course."
+            },
+            {
+              "name": "gradeId",
+              "description": "The unique identifier for the grade."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, support QAPs, and maintain data integrity. It leverages path-based ownership for user-specific data and denormalization where necessary to avoid complex security rules.  The structure segregates data based on access requirements (e.g., user profiles, course-related data), promoting a homogeneous security posture within each collection.\n\n- `/users/{userId}`: Stores user profiles. Access is restricted to the user themselves and potentially admins (roles managed outside the scope of these entities, potentially via a separate `/roles_admin/{uid}` collection as existence-based global roles).\n- `/courses/{courseId}`: Stores course information.  Teachers can create courses, and students can enroll in them. Authorization to create a course is based on the user's teacher role (again, enforced via a separate `/roles_teacher/{uid}` existence check).\n- `/users/{userId}/enrollments/{enrollmentId}`: Tracks course enrollments for each user. Authorization relies on the `userId` path segment.\n- `/courses/{courseId}/assignments/{assignmentId}`: Stores assignments for each course. Teachers who created the course can create assignments.\n- `/users/{userId}/submissions/{submissionId}`: Stores student submissions. Authorization relies on the `userId` path segment, ensuring only the student can create submissions for themselves. `assignmentId` and `courseId` are denormalized into the submission document for querying and display purposes.  These denormalized fields facilitate efficient listing of submissions for a given assignment or course without requiring collection group queries.\n- `/courses/{courseId}/grades/{gradeId}`: Stores grades for submissions, teacherId who gave the grade are denormalized.\n\nThis design enables simple and robust security rules by:\n\n1.  **Authorization Independence:**  Avoiding `get()` calls by using path-based ownership (e.g., `/users/{userId}/submissions/{submissionId}`) and denormalizing authorization-related data into documents.\n2.  **Clarity of Intent:**  Making access control explicit through the structure.  For example, submissions are always owned by a user, simplifying rules.\n3.  **QAPs (Rules are not Filters):**  Supporting secure `list` operations by segregating data based on ownership and access requirements."
+  }
+}
