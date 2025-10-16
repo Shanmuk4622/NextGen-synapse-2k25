@@ -33,8 +33,10 @@ export default function TeacherDashboardPage() {
   }, [teacherCourses]);
 
   const enrollmentsQuery = useMemoFirebase(() => {
+    // This is the critical fix: If there are no courseIds, we must return null.
+    // An empty `in` query is invalid in Firestore and was causing the permission error.
     if (!firestore || !courseIds || courseIds.length === 0) return null;
-    // This query is now correctly structured to fetch enrollments only for the teacher's courses.
+    
     return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
   }, [firestore, courseIds]);
 
