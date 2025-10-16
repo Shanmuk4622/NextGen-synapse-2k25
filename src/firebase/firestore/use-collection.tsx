@@ -42,12 +42,12 @@ export function useCollection<T = any>(
   const { isAuthLoading } = useUser(); // Depend on the auth loading state
 
   useEffect(() => {
-    // If the query isn't ready OR if auth is still loading, do nothing.
-    // This is the critical guard to prevent premature fetches.
+    // **Guard:** If the query isn't ready OR if auth is still loading, do nothing.
+    // This is the critical guard to prevent premature fetches and invalid queries.
     if (!memoizedTargetRefOrQuery || isAuthLoading) {
       setData(null);
       setError(null);
-      return;
+      return; // Stop and wait for a valid query or for auth to complete.
     }
 
     const unsubscribe = onSnapshot(
@@ -75,7 +75,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, isAuthLoading]); // Re-run effect when auth state changes
+  }, [memoizedTargetRefOrQuery, isAuthLoading]); // Re-run effect when query or auth state changes
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');

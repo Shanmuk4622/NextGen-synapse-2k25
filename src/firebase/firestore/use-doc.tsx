@@ -32,12 +32,12 @@ export function useDoc<T = any>(
   const { isAuthLoading } = useUser(); // Depend on the auth loading state
 
   useEffect(() => {
-    // If the doc ref isn't ready OR if auth is still loading, do nothing.
-    // This is the critical guard to prevent premature fetches.
+    // **Guard:** If the doc ref isn't ready OR if auth is still loading, do nothing.
+    // This is the critical guard to prevent premature fetches and invalid doc refs.
     if (!memoizedDocRef || isAuthLoading) {
       setData(null);
       setError(null);
-      return;
+      return; // Stop and wait for a valid doc ref or for auth to complete.
     }
 
     const unsubscribe = onSnapshot(
@@ -46,6 +46,7 @@ export function useDoc<T = any>(
         if (snapshot.exists()) {
           setData({ ...(snapshot.data() as T), id: snapshot.id });
         } else {
+          // Document does not exist
           setData(null);
         }
         setError(null);
@@ -63,7 +64,7 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef, isAuthLoading]); // Re-run effect when auth state changes
+  }, [memoizedDocRef, isAuthLoading]); // Re-run effect when doc ref or auth state changes
 
   if(memoizedDocRef && !memoizedDocRef.__memo) {
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
