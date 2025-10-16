@@ -11,25 +11,65 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Clock, UserCircle, BookOpen, FileText, CheckCircle } from "lucide-react";
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Course, Enrollment } from '@/lib/types';
+import { useToast } from "@/hooks/use-toast";
+import { v4 as uuidv4 } from 'uuid';
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
+  const { id: courseId } = params;
   const { user } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const courseRef = useMemoFirebase(() => {
     if (!firestore) return null;
-    return doc(firestore, 'courses', params.id);
-  }, [firestore, params.id]);
+    return doc(firestore, 'courses', courseId);
+  }, [firestore, courseId]);
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, 'enrollments'), where('courseId', '==', params.id), where('studentId', '==', user.uid));
-  }, [firestore, params.id, user]);
+    return query(collection(firestore, 'enrollments'), where('courseId', '==', courseId), where('studentId', '==', user.uid));
+  }, [firestore, courseId, user]);
   
   const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+
+  const handleEnroll = async () => {
+    if (!user || !firestore || !course) {
+      toast({
+        variant: "destructive",
+        title: "Enrollment Failed",
+        description: "You must be logged in to enroll in a course.",
+      });
+      return;
+    }
+
+    try {
+      const enrollmentsCollection = collection(firestore, 'enrollments');
+      await addDoc(enrollmentsCollection, {
+        id: uuidv4(),
+        studentId: user.uid,
+        courseId: course.id,
+        enrollmentDate: serverTimestamp(),
+      });
+
+      // Here you would also update the course's studentCount
+      // For now, we'll just show a success message
+
+      toast({
+        title: "Enrollment Successful!",
+        description: `You have enrolled in "${course.title}".`,
+      });
+    } catch (error) {
+      console.error("Enrollment error: ", error);
+      toast({
+        variant: "destructive",
+        title: "Enrollment Failed",
+        description: "An error occurred while trying to enroll you.",
+      });
+    }
+  };
 
   if (isCourseLoading || areEnrollmentsLoading) {
       return <div>Loading...</div>;
@@ -141,7 +181,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                 ) : (
                   <>
                     <p className="text-muted-foreground mb-4">Enroll now to get full access to the course content and assignments.</p>
-                    <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg">Enroll in Course</Button>
+                    <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" onClick={handleEnroll}>Enroll in Course</Button>
                   </>
                 )}
               </CardContent>
