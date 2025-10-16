@@ -24,31 +24,28 @@ export interface UseDocResult<T> {
 /**
  * React hook to subscribe to a single Firestore document.
  *
- * NEW BEHAVIOR: This hook no longer needs its own auth check. The parent
- * `FirebaseProvider` now guarantees that authentication is resolved before
- * this hook can even be executed.
- *
- * It will correctly handle a `null` or `undefined` docRef, entering a loading
- * state until a valid reference is provided.
+ * It will correctly handle a `null` or `undefined` docRef, and wait for authentication
+ * to be resolved before executing the query.
  */
 export function useDoc<T = any>(
-  memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
+  memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined,
 ): UseDocResult<T> {
   const [data, setData] = useState<WithId<T> | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { isAuthLoading } = useUser();
 
   useEffect(() => {
-    // If the document reference isn't ready, we are in a loading state.
-    // Reset state and wait for a valid reference.
-    if (!memoizedDocRef) {
+    // If the docRef isn't ready OR we are still waiting for the initial auth
+    // check, then we are in a loading state. Reset and wait.
+    if (!memoizedDocRef || isAuthLoading) {
       setIsLoading(true);
       setData(null);
       setError(null);
       return;
     }
 
-    // A valid reference is provided. Start loading.
+    // A valid reference is provided and auth is resolved. Start loading.
     setIsLoading(true);
 
     const unsubscribe = onSnapshot(
@@ -57,11 +54,10 @@ export function useDoc<T = any>(
         if (snapshot.exists()) {
           setData({ ...(snapshot.data() as T), id: snapshot.id });
         } else {
-          // Document does not exist. This is a valid state, not an error.
           setData(null);
         }
-        setError(null); // Clear any previous error.
-        setIsLoading(false); // Loading is complete.
+        setError(null);
+        setIsLoading(false);
       },
       (error: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
@@ -71,16 +67,19 @@ export function useDoc<T = any>(
 
         setError(contextualError);
         setData(null);
-        setIsLoading(false); // Stop loading on error.
+        setIsLoading(false);
 
-        // Propagate the error for global handling.
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
-    // Cleanup subscription on unmount or if the reference changes.
     return () => unsubscribe();
-  }, [memoizedDocRef]);
+  }, [memoizedDocRef, isAuthLoading]);
 
-  return { data, isLoading, error };
+  if(memoizedDocRef && !memoizedDocRef.__memo) {
+    throw new Error('A firestore query was not properly memoized using useMemoFirebase');
+  }
+
+  // The hook is loading if the query is being prepared OR if the initial auth check is running.
+  return { data, isLoading: isLoading || isAuthLoading, error };
 }

@@ -13,9 +13,6 @@ export interface FirebaseContextState {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
-  user: User | null;
-  // This is now the definitive flag for whether the INITIAL auth check is done.
-  isAuthLoading: boolean;
 }
 
 // This is the shape of the user-specific hook.
@@ -26,6 +23,8 @@ export interface UserHookResult {
 
 // The actual React Context. It's undefined by default.
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
+const UserContext = createContext<UserHookResult | undefined>(undefined);
+
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -34,15 +33,6 @@ interface FirebaseProviderProps {
   auth: Auth;
 }
 
-/**
- * FirebaseProvider: The core of the new authentication strategy.
- *
- * CRITICAL BEHAVIOR: This provider now implements a "hard gate". It will render
- * nothing (`null`) until the very first `onAuthStateChanged` event is received.
- * This guarantees that no child component, hook, or page can render or execute
- * a query until Firebase has confirmed the user's authentication status. This
- * completely eliminates the race condition that caused "auth: null" errors.
- */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
   firebaseApp,
@@ -50,57 +40,48 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   auth,
 }) => {
   const [user, setUser] = useState<User | null>(null);
-  // This state is the "gate". It starts true and only becomes false
-  // after the first auth check is complete.
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    // onAuthStateChanged fires once on initialization and then again on any auth changes.
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      // Once this first callback fires, we know the initial auth state.
-      // We can now "open the gate" by setting isAuthLoading to false.
       if (isAuthLoading) {
         setIsAuthLoading(false);
       }
     }, (error) => {
       console.error("FirebaseProvider: onAuthStateChanged error:", error);
       setUser(null);
-      // Also open the gate on error.
       if (isAuthLoading) {
         setIsAuthLoading(false);
       }
     });
 
-    // Cleanup subscription on unmount.
     return () => unsubscribe();
-  }, [auth, isAuthLoading]); // Dependency on isAuthLoading ensures we only set it once.
+  }, [auth, isAuthLoading]);
 
   const contextValue = useMemo((): FirebaseContextState => ({
     firebaseApp,
     firestore,
     auth,
+  }), [firebaseApp, firestore, auth]);
+
+  const userContextValue = useMemo((): UserHookResult => ({
     user,
     isAuthLoading,
-  }), [firebaseApp, firestore, auth, user, isAuthLoading]);
+  }), [user, isAuthLoading]);
 
-  // THE HARD GATE: If the initial authentication check is still running,
-  // do not render any part of the application.
-  if (isAuthLoading) {
-    return null; // Or a global spinner component if preferred
-  }
-
-  // Once auth is resolved, render the app.
   return (
     <FirebaseContext.Provider value={contextValue}>
-      <FirebaseErrorListener />
-      {children}
+      <UserContext.Provider value={userContextValue}>
+        <FirebaseErrorListener />
+        {children}
+      </UserContext.Provider>
     </FirebaseContext.Provider>
   );
 };
 
 
-// HOOKS: These are simplified now that the provider handles the auth gate.
+// HOOKS
 
 function useFirebase(): FirebaseContextState {
   const context = useContext(FirebaseContext);
@@ -116,11 +97,13 @@ export const useFirebaseApp = (): FirebaseApp => useFirebase().firebaseApp;
 
 /**
  * Hook specifically for accessing the authenticated user's state.
- * It provides the user object and the loading status of the initial auth check.
  */
 export const useUser = (): UserHookResult => {
-  const { user, isAuthLoading } = useFirebase();
-  return { user, isAuthLoading };
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error('useUser must be used within a FirebaseProvider.');
+  }
+  return context;
 };
 
 // useMemoFirebase remains unchanged.
