@@ -24,6 +24,60 @@ import { doc, getDoc, collection, query, where, collectionGroup } from "firebase
 import Link from "next/link";
 
 
+// NEW, DEDICATED COMPONENT FOR FETCHING AND DISPLAYING ENROLLED STUDENTS
+function EnrolledStudents({ course }: { course: Course }) {
+  const firestore = useFirestore();
+
+  // This query is safe because `course` is guaranteed to exist.
+  const enrollmentsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', course.id));
+  }, [firestore, course.id]);
+
+  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+
+  if (areEnrollmentsLoading) {
+    return <p className="text-muted-foreground text-center py-4">Loading students...</p>;
+  }
+
+  const students = (enrollments || []).map(e => getStudentById(e.studentId)).filter(Boolean);
+
+  if (students.length === 0) {
+     return <p className="text-muted-foreground text-center py-4">No students are enrolled in this course yet.</p>
+  }
+
+  return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Student</TableHead>
+            <TableHead className="text-right">Enrolled</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {students.map(student => {
+            const enrollment = enrollments?.find(e => e.studentId === student!.id);
+            return(
+              <TableRow key={student!.id}>
+                <TableCell className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>{student!.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium">{student!.name}</span>
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground text-sm">
+                  {/* @ts-ignore */}
+                  {enrollment?.enrollmentDate?.toDate().toLocaleDateString()}
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+  );
+}
+
+
 export default function TeacherCoursePage({ params }: { params: { id: string } }) {
   const id = React.use(params).id;
   const { user, isUserLoading: isAuthLoading } = useUser();
@@ -31,7 +85,7 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [isAppUserLoading, setIsAppUserLoading] = useState(true);
 
-  // Step 1: Get the App User object. This is a one-time fetch.
+  // PARENT COMPONENT'S JOB: Get the App User and the Course document
   useEffect(() => {
     if (isAuthLoading || !user || !firestore) {
       if (!isAuthLoading) setIsAppUserLoading(false);
@@ -51,24 +105,14 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
     .finally(() => setIsAppUserLoading(false));
   }, [user, isAuthLoading, firestore]);
 
-  // Step 2: Get the course details. This depends on the `id` from params.
   const courseRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
     return doc(firestore, 'courses', id);
   }, [firestore, id]);
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
   
-  // Step 3: Get all enrollments for this specific course. This is a collection group query.
-  // It depends on having a valid `id`.
-  const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
-    return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', id));
-  }, [firestore, id]);
-  
-  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
-
-  // Master loading state
-  const isLoading = isAuthLoading || isAppUserLoading || isCourseLoading || areEnrollmentsLoading;
+  const assignments = getAssignmentsByCourse(id);
+  const isLoading = isAuthLoading || isAppUserLoading || isCourseLoading;
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -78,9 +122,6 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   if (!course || !user || !appUser || (appUser.role === 'teacher' && course.teacherId !== user.uid)) {
     notFound();
   }
-
-  const students = (enrollments || []).map(e => getStudentById(e.studentId)).filter(Boolean);
-  const assignments = getAssignmentsByCourse(course.id);
 
   return (
     <div className="container py-8 md:py-12">
@@ -151,40 +192,10 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
             <CardHeader className="flex items-center flex-row gap-3">
               <Users className="h-6 w-6 text-primary" />
               <CardTitle className="font-headline text-2xl">Enrolled Students</CardTitle>
-              <Badge className="ml-auto">{students.length}</Badge>
             </CardHeader>
             <CardContent>
-              {students.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead className="text-right">Enrolled</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {students.map(student => {
-                      const enrollment = enrollments?.find(e => e.studentId === student!.id);
-                      return(
-                        <TableRow key={student!.id}>
-                          <TableCell className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback>{student!.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">{student!.name}</span>
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground text-sm">
-                            {/* @ts-ignore */}
-                            {enrollment?.enrollmentDate?.toDate().toLocaleDateString()}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">No students are enrolled in this course yet.</p>
-              )}
+                {/* RENDER THE NEW COMPONENT ONLY WHEN course IS READY */}
+                {course && <EnrolledStudents course={course} />}
             </CardContent>
           </Card>
         </div>

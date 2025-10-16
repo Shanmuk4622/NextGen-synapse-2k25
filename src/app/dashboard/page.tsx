@@ -13,13 +13,87 @@ import { useEffect, useState, useMemo } from 'react';
 import type { User as AppUser, Course, Enrollment } from '@/lib/types';
 import { doc, getDoc, collection, query, where, documentId } from 'firebase/firestore';
 
+// NEW, DEDICATED COMPONENT FOR FETCHING AND DISPLAYING ENROLLED COURSES
+function EnrolledCourses({ appUser }: { appUser: AppUser }) {
+  const firestore = useFirestore();
+
+  // Step 1: Get user's enrollments. This is safe because appUser is guaranteed to exist.
+  const enrollmentsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, `users/${appUser.id}/enrollments`));
+  }, [firestore, appUser.id]);
+  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+
+  // Step 2: Get the course IDs from the enrollments.
+  const enrolledCourseIds = useMemo(() => {
+    if (!enrollments) return [];
+    return enrollments.map(e => e.courseId);
+  }, [enrollments]);
+
+  // Step 3: Get the actual course documents. This is safe because we check for non-empty IDs.
+  const coursesQuery = useMemoFirebase(() => {
+    if (!firestore || enrolledCourseIds.length === 0) return null;
+    return query(collection(firestore, 'courses'), where(documentId(), 'in', enrolledCourseIds));
+  }, [firestore, enrolledCourseIds]);
+  const { data: enrolledCourses, isLoading: areCoursesLoading } = useCollection<Course>(coursesQuery);
+
+  const isLoading = areEnrollmentsLoading || (enrolledCourseIds.length > 0 && areCoursesLoading);
+
+  if (isLoading) {
+    return <div>Loading your courses...</div>;
+  }
+  
+  if (!enrolledCourses || enrolledCourses.length === 0) {
+     return (
+        <div className="text-center py-12 border-2 border-dashed rounded-lg">
+            <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">No Courses Yet</h3>
+            <p className="mt-2 text-sm text-muted-foreground">You are not enrolled in any courses.</p>
+            <Button asChild className="mt-4">
+                <Link href="/#courses">Explore Courses</Link>
+            </Button>
+        </div>
+     );
+  }
+
+  return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {enrolledCourses.map(course => {
+          const teacher = getTeacherById(course.teacherId);
+          const progress = Math.floor(Math.random() * 81) + 20; // Mock progress
+          return (
+            <Card key={course.id} className="flex flex-col">
+              <CardHeader>
+                <CardTitle className="font-headline text-xl">{course.title}</CardTitle>
+                <CardDescription>by {teacher?.name}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Your progress:</p>
+                  <Progress value={progress} aria-label={`${progress}% complete`} />
+                  <p className="text-xs text-right text-muted-foreground">{progress}%</p>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button asChild className="w-full">
+                  <Link href={`/courses/${course.id}`}>Continue Learning</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          );
+        })}
+      </div>
+  );
+}
+
+
 export default function DashboardPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [isAppUserLoading, setIsAppUserLoading] = useState(true);
 
-  // Step 1: Get the App User object. This is a one-time fetch.
+  // PARENT COMPONENT'S ONLY JOB IS TO GET THE APP USER
   useEffect(() => {
     if (isAuthLoading || !user || !firestore) {
       if (!isAuthLoading) setIsAppUserLoading(false);
@@ -41,36 +115,7 @@ export default function DashboardPage() {
 
   }, [user, isAuthLoading, firestore]);
 
-  // Step 2: Get user's enrollments. This query depends on a valid user.
-  const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null; // Guard against null user
-    return query(collection(firestore, `users/${user.uid}/enrollments`));
-  }, [firestore, user?.uid]);
-
-  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
-
-  // Step 3: Get the course IDs from the enrollments. This memoizes the IDs.
-  const enrolledCourseIds = useMemo(() => {
-    if (!enrollments || enrollments.length === 0) return [];
-    return enrollments.map(e => e.courseId);
-  }, [enrollments]);
-
-  // Step 4: Get the actual course documents. This query depends on having a non-empty array of course IDs.
-  const coursesQuery = useMemoFirebase(() => {
-    if (!firestore || enrolledCourseIds.length === 0) {
-      return null;
-    }
-    return query(collection(firestore, 'courses'), where(documentId(), 'in', enrolledCourseIds));
-  }, [firestore, enrolledCourseIds]);
-
-  const { data: enrolledCourses, isLoading: areCoursesLoading } = useCollection<Course>(coursesQuery);
-
-  // Master loading state: true until all sequential steps are complete.
-  const isLoading = 
-    isAuthLoading || 
-    isAppUserLoading || 
-    areEnrollmentsLoading || 
-    (enrolledCourseIds.length > 0 && areCoursesLoading);
+  const isLoading = isAuthLoading || isAppUserLoading;
   
   if (isLoading) {
     return <div>Loading...</div>;
@@ -99,43 +144,8 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-8">
           <section>
             <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
-            {enrolledCourses && enrolledCourses.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {enrolledCourses.map(course => {
-                  const teacher = getTeacherById(course.teacherId);
-                  const progress = Math.floor(Math.random() * 81) + 20; // Mock progress
-                  return (
-                    <Card key={course.id} className="flex flex-col">
-                      <CardHeader>
-                        <CardTitle className="font-headline text-xl">{course.title}</CardTitle>
-                        <CardDescription>by {teacher?.name}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="flex-grow">
-                        <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground">Your progress:</p>
-                          <Progress value={progress} aria-label={`${progress}% complete`} />
-                          <p className="text-xs text-right text-muted-foreground">{progress}%</p>
-                        </div>
-                      </CardContent>
-                      <CardFooter>
-                        <Button asChild className="w-full">
-                          <Link href={`/courses/${course.id}`}>Continue Learning</Link>
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-semibold">No Courses Yet</h3>
-                <p className="mt-2 text-sm text-muted-foreground">You are not enrolled in any courses.</p>
-                <Button asChild className="mt-4">
-                  <Link href="/#courses">Explore Courses</Link>
-                </Button>
-              </div>
-            )}
+            {/* RENDER THE NEW COMPONENT ONLY WHEN appUser IS READY */}
+            {appUser && <EnrolledCourses appUser={appUser} />}
           </section>
 
           <section>
