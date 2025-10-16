@@ -1,5 +1,8 @@
 
-import type { User, Course, Enrollment, Assignment, Submission } from './types';
+import type { User, Course } from './types';
+
+// This file provides mock data for local development.
+// In a real application, this data would come from Firestore.
 
 export const users: User[] = [
   { id: 'user-1', name: 'Alice Johnson', email: 'alice@example.com', role: 'student' },
@@ -9,70 +12,12 @@ export const users: User[] = [
   { id: 'user-5', name: 'Dr. Eve Miller', email: 'eve@example.com', role: 'teacher' },
 ];
 
-export const assignments: Assignment[] = [
-  {
-    id: 'assign-1',
-    courseId: 'course-1',
-    title: 'HTML & CSS Basics',
-    description: 'Create a personal portfolio website using HTML and CSS.',
-    dueDate: new Date('2023-09-20'),
-  },
-  {
-    id: 'assign-2',
-    courseId: 'course-1',
-    title: 'JavaScript Fundamentals',
-    description: 'Build a simple calculator application using JavaScript.',
-    dueDate: new Date('2023-10-05'),
-  },
-  {
-    id: 'assign-3',
-    courseId: 'course-3',
-    title: 'Data Analysis Project',
-    description: 'Analyze the provided dataset and present your findings in a Jupyter notebook.',
-    dueDate: new Date('2023-10-15'),
-  },
-];
-
-export const submissions: Submission[] = [
-  {
-    id: 'sub-1',
-    assignmentId: 'assign-1',
-    studentId: 'user-1',
-    submissionDate: new Date('2023-09-18'),
-    content: 'https://example.com/alice-portfolio',
-    grade: 92,
-  },
-  {
-    id: 'sub-2',
-    assignmentId: 'assign-1',
-    studentId: 'user-2',
-    submissionDate: new Date('2023-09-19'),
-    content: 'https://example.com/bob-portfolio',
-    grade: 88,
-  },
-  {
-    id: 'sub-3',
-    assignmentId: 'assign-3',
-    studentId: 'user-1',
-    submissionDate: new Date('2023-10-14'),
-    content: 'https://example.com/alice-data-project',
-    grade: 95,
-  },
-];
-
-// Helper functions to query mock data
 export const getTeacherById = (id: string) => users.find(u => u.id === id && u.role === 'teacher');
 export const getStudentById = (id: string) => users.find(u => u.id === id && u.role === 'student');
-export const getAssignmentsByCourse = (courseId: string) => assignments.filter(a => a.courseId === courseId);
-export const getSubmissionsForAssignment = (assignmentId: string) => submissions.filter(s => s.assignmentId === assignmentId);
 
-export const getStudentCourses = (studentId: string, enrollments: Enrollment[], allCourses: Course[]) => {
-  if (!allCourses || !enrollments) return [];
-  const studentEnrollments = enrollments.filter(e => e.studentId === studentId);
-  return allCourses.filter(course => studentEnrollments.some(e => e.courseId === course.id));
-};
-
-export const getCourseById = (id: string, allCourses: Course[] | null) => {
-  if (!allCourses) return undefined;
-  return allCourses.find(c => c.id === id);
-}
+// Fallback assignments and submissions data for components that might still reference them.
+// This will be removed in subsequent steps as we clean up the UI.
+export const assignments: any[] = [];
+export const submissions: any[] = [];
+export const getAssignmentsByCourse = (courseId: string) => [];
+export const getSubmissionsForAssignment = (assignmentId: string) => [];

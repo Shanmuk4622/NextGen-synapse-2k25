@@ -25,6 +25,7 @@ export type Enrollment = {
   enrollmentDate: Date;
 };
 
+// The types below are now deprecated and will be removed.
 export type Assignment = {
   id: string;
   courseId: string;
@@ -38,6 +39,6 @@ export type Submission = {
   assignmentId: string;
   studentId: string;
   submissionDate: Date;
-  content: string; // Could be a URL to a file or text content
-  grade: number | null; // e.g., 85
+  content: string;
+  grade: number | null;
 };
