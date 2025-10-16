@@ -33,7 +33,7 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query.
- * It now implicitly waits for auth to be ready because FirebaseProvider won't render it otherwise.
+ * It now internally checks for auth loading state before creating a subscription.
  */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
@@ -43,7 +43,7 @@ export function useCollection<T = any>(
   const { isAuthLoading } = useUser();
 
   useEffect(() => {
-    // If the query isn't ready OR if auth is still loading, do nothing.
+    // If the query isn't ready OR if auth is still loading, do nothing and cleanup.
     if (!memoizedTargetRefOrQuery || isAuthLoading) {
       setData(null);
       setError(null);
@@ -83,8 +83,8 @@ export function useCollection<T = any>(
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // isLoading is true if a query is provided but we don't have data or an error yet.
-  const isLoading = (isAuthLoading || (!!memoizedTargetRefOrQuery && data === null && error === null));
+  // isLoading is true if auth is loading, or if a query is provided but we don't have data or an error yet.
+  const isLoading = isAuthLoading || (!!memoizedTargetRefOrQuery && data === null && error === null);
   
   return { data, isLoading, error };
 }

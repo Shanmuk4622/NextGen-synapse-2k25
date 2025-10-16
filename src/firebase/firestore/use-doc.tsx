@@ -23,7 +23,7 @@ export interface UseDocResult<T> {
 
 /**
  * React hook to subscribe to a single Firestore document.
- * It now implicitly waits for auth to be ready because FirebaseProvider won't render it otherwise.
+ * It now internally checks for auth loading state before creating a subscription.
  */
 export function useDoc<T = any>(
   memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined,
@@ -33,7 +33,7 @@ export function useDoc<T = any>(
   const { isAuthLoading } = useUser();
 
   useEffect(() => {
-    // If the doc ref isn't ready OR if auth is still loading, do nothing.
+    // If the doc ref isn't ready OR if auth is still loading, do nothing and cleanup.
     if (!memoizedDocRef || isAuthLoading) {
       setData(null);
       setError(null);
@@ -70,8 +70,8 @@ export function useDoc<T = any>(
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // isLoading is true if a docRef is provided but we don't have data or an error yet, or if auth is loading.
-  const isLoading = (isAuthLoading || (!!memoizedDocRef && data === null && error === null));
+  // isLoading is true if auth is loading, or if a docRef is provided but we don't have data or an error yet.
+  const isLoading = isAuthLoading || (!!memoizedDocRef && data === null && error === null);
   
   return { data, isLoading, error };
 }

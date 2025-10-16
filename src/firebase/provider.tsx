@@ -68,13 +68,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     isAuthLoading,
   }), [user, isAuthLoading]);
 
-  // *** THE AUTHENTICATION GATE ***
-  // Do not render children until the initial auth check is complete.
-  // This prevents all child components from running and making premature queries.
-  if (isAuthLoading) {
-    return null; // Or a full-screen loader component
-  }
-
   return (
     <FirebaseContext.Provider value={contextValue}>
       <UserContext.Provider value={userContextValue}>
