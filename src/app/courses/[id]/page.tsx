@@ -17,21 +17,20 @@ import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
-  const { id: courseId } = params;
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const courseRef = useMemoFirebase(() => {
     if (!firestore) return null;
-    return doc(firestore, 'courses', courseId);
-  }, [firestore, courseId]);
+    return doc(firestore, 'courses', params.id);
+  }, [firestore, params.id]);
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, 'enrollments'), where('courseId', '==', courseId), where('studentId', '==', user.uid));
-  }, [firestore, courseId, user]);
+    return query(collection(firestore, 'enrollments'), where('courseId', '==', params.id), where('studentId', '==', user.uid));
+  }, [firestore, params.id, user]);
   
   const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 

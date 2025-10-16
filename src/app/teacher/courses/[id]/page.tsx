@@ -25,7 +25,6 @@ import Link from "next/link";
 
 
 export default function TeacherCoursePage({ params }: { params: { id: string } }) {
-  const { id: courseId } = params;
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [appUser, setAppUser] = useState<AppUser | null>(null);
@@ -37,14 +36,14 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
 
   const courseRef = useMemoFirebase(() => {
     if (!firestore) return null;
-    return doc(firestore, 'courses', courseId);
-  }, [firestore, courseId]);
+    return doc(firestore, 'courses', params.id);
+  }, [firestore, params.id]);
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !courseId) return null;
-    return query(collection(firestore, 'enrollments'), where('courseId', '==', courseId));
-  }, [firestore, courseId]);
+    if (!firestore) return null;
+    return query(collection(firestore, 'enrollments'), where('courseId', '==', params.id));
+  }, [firestore, params.id]);
   
   const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
