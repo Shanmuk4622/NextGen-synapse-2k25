@@ -1,0 +1,72 @@
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { PlusCircle, Users, BookOpen } from "lucide-react";
+import { courses, getEnrollmentsByCourse, users } from "@/lib/data";
+
+// Mock current user
+const currentUser = users.find(u => u.id === 'user-3');
+
+export default function TeacherDashboardPage() {
+  if (!currentUser || currentUser.role !== 'teacher') {
+    return <div>Access Denied. You must be a teacher to view this page.</div>;
+  }
+
+  const teacherCourses = courses.filter(c => c.teacherId === currentUser.id);
+
+  return (
+    <div className="container py-8 md:py-12">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+        <div>
+          <h1 className="font-headline text-3xl md:text-4xl font-bold">Teacher Dashboard</h1>
+          <p className="text-muted-foreground mt-2 text-lg">Manage your courses and students.</p>
+        </div>
+        <Button asChild>
+          <Link href="/teacher/courses/new">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create New Course
+          </Link>
+        </Button>
+      </div>
+
+      <section>
+        <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
+        {teacherCourses.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {teacherCourses.map(course => {
+              const enrollments = getEnrollmentsByCourse(course.id);
+              return (
+                <Card key={course.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="font-headline text-xl">{course.title}</CardTitle>
+                    <CardDescription>{course.duration}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      <span>{enrollments.length} student{enrollments.length !== 1 && 's'} enrolled</span>
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button asChild variant="outline" className="w-full">
+                      <Link href={`/teacher/courses/${course.id}`}>Manage Course</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-12 border-2 border-dashed rounded-lg">
+            <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">You haven't created any courses</h3>
+            <p className="mt-2 text-sm text-muted-foreground">Get started by creating your first course.</p>
+            <Button asChild className="mt-4">
+              <Link href="/teacher/courses/new">Create a Course</Link>
+            </Button>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}

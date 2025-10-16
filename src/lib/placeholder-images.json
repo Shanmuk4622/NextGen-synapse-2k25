@@ -1,3 +1,34 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "course-web-dev",
+      "description": "Abstract representation of web development code on a screen.",
+      "imageUrl": "https://picsum.photos/seed/101/600/400",
+      "imageHint": "code programming"
+    },
+    {
+      "id": "course-react",
+      "description": "Vibrant and dynamic visualization of React component structure.",
+      "imageUrl": "https://picsum.photos/seed/102/600/400",
+      "imageHint": "abstract tech"
+    },
+    {
+      "id": "course-data-science",
+      "description": "Network graphs and data visualizations representing data science.",
+      "imageUrl": "https://picsum.photos/seed/103/600/400",
+      "imageHint": "data visualization"
+    },
+    {
+      "id": "course-ui-ux",
+      "description": "Clean and modern user interface design mockups.",
+      "imageUrl": "https://picsum.photos/seed/104/600/400",
+      "imageHint": "interface design"
+    },
+    {
+      "id": "hero-image",
+      "description": "An inspiring image of a modern and collaborative learning environment.",
+      "imageUrl": "https://picsum.photos/seed/105/1200/800",
+      "imageHint": "learning environment"
+    }
+  ]
 }
