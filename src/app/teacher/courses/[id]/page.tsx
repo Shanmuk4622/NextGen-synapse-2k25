@@ -36,14 +36,14 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   );
 
   const courseRef = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !id) return null;
     return doc(firestore, 'courses', id);
   }, [firestore, id]);
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
-
+  
   const enrollmentsQuery = useMemoFirebase(() => {
+    // Important: Do not create the query until the course ID is available
     if (!firestore || !id) return null;
-    // Use a collection group query to find all enrollments for this course
     return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', id));
   }, [firestore, id]);
   
@@ -61,7 +61,7 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
     }
   }, [userDocRef]);
 
-  if (isUserLoading || (user && !appUser) || isCourseLoading || areEnrollmentsLoading) {
+  if (isUserLoading || (user && !appUser) || isCourseLoading || (id && areEnrollmentsLoading)) {
     return <div>Loading...</div>;
   }
 

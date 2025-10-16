@@ -37,26 +37,30 @@ export default function DashboardPage() {
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    // Securely query only the current user's enrollments subcollection
     return query(collection(firestore, `users/${user.uid}/enrollments`));
   }, [firestore, user?.uid]);
 
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
-  const courseIds = useMemo(() => {
-    if (!enrollments) return [];
+  const enrolledCourseIds = useMemo(() => {
+    if (!enrollments) return null; // Distinguish between loading and empty
+    if (enrollments.length === 0) return [];
     return enrollments.map(e => e.courseId);
   }, [enrollments]);
 
   const coursesQuery = useMemoFirebase(() => {
-    if (!firestore || courseIds.length === 0) return null;
-    // Fetch details for the enrolled courses
-    return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds));
-  }, [firestore, courseIds]);
+    // Important: Do not run this query if the enrolledCourseIds array is null (loading) or empty.
+    if (!firestore || enrolledCourseIds === null || enrolledCourseIds.length === 0) {
+      return null;
+    }
+    return query(collection(firestore, 'courses'), where(documentId(), 'in', enrolledCourseIds));
+  }, [firestore, enrolledCourseIds]);
 
   const { data: enrolledCourses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
 
-  if (isUserLoading || (user && !appUser) || coursesLoading || enrollmentsLoading) {
+  const isLoading = isUserLoading || (user && !appUser) || enrollmentsLoading || (enrolledCourseIds && enrolledCourseIds.length > 0 && coursesLoading);
+  
+  if (isLoading) {
     return <div>Loading...</div>;
   }
   
