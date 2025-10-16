@@ -42,7 +42,7 @@ export function useDoc<T = any>(
       unsubscribeRef.current();
     }
     
-    // **Guard:** If the doc ref isn't ready, do nothing.
+    // **Guard:** If the doc ref isn't ready, do nothing and reset state.
     if (!memoizedDocRef) {
       setData(null);
       setError(null);
@@ -80,14 +80,14 @@ export function useDoc<T = any>(
 
   }, [memoizedDocRef]);
 
-  // Cleanup effect to unsubscribe when the component unmounts or the ref changes.
+  // Cleanup effect to unsubscribe when the component unmounts.
   useEffect(() => {
     return () => {
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
       }
     };
-  }, [memoizedDocRef]);
+  }, []); // Only run cleanup on unmount.
   
   return { data, isLoading, error, refetch };
 }

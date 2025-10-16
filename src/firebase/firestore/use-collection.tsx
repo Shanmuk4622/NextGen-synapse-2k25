@@ -51,7 +51,7 @@ export function useCollection<T = any>(
       unsubscribeRef.current();
     }
 
-    // **Guard:** If the query isn't ready, do nothing.
+    // **Guard:** If the query isn't ready, do nothing and reset state.
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setError(null);
@@ -95,7 +95,7 @@ export function useCollection<T = any>(
         unsubscribeRef.current();
       }
     };
-  }, [memoizedTargetRefOrQuery]);
+  }, []); // Only run cleanup on unmount.
 
   return { data, isLoading, error, refetch };
 }

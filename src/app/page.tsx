@@ -4,7 +4,7 @@
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { CourseCard } from '@/components/course/CourseCard';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
@@ -15,7 +15,6 @@ import { useEffect } from 'react';
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-image');
   const firestore = useFirestore();
-  const { isAuthLoading } = useUser();
 
   const coursesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -25,10 +24,10 @@ export default function Home() {
   const { data: courses, isLoading, refetch } = useCollection<Course>(coursesQuery);
 
   useEffect(() => {
-    if (!isAuthLoading && coursesQuery) {
+    if (coursesQuery) {
       refetch();
     }
-  }, [isAuthLoading, coursesQuery, refetch]);
+  }, [coursesQuery, refetch]);
 
   return (
     <div className="flex flex-col">

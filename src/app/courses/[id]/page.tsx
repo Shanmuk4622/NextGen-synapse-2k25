@@ -64,16 +64,16 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const { data: userEnrollment, isLoading: areEnrollmentsLoading, refetch: refetchEnrollments } = useCollection<Enrollment>(enrollmentsQuery);
   
   useEffect(() => {
-    if (!isAuthLoading && courseRef) {
+    if (courseRef) {
       refetchCourse();
     }
-  }, [isAuthLoading, courseRef, refetchCourse]);
+  }, [courseRef, refetchCourse]);
 
   useEffect(() => {
-    if (!isAuthLoading && enrollmentsQuery) {
+    if (enrollmentsQuery) {
       refetchEnrollments();
     }
-  }, [isAuthLoading, enrollmentsQuery, refetchEnrollments]);
+  }, [enrollmentsQuery, refetchEnrollments]);
 
 
   useEffect(() => {

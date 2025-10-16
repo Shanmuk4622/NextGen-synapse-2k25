@@ -12,20 +12,19 @@ import { useEffect } from "react";
 
 function TeacherCourses({ appUser }: { appUser: AppUser }) {
     const firestore = useFirestore();
-    const { isAuthLoading } = useUser();
 
     const teacherCoursesQuery = useMemoFirebase(() => {
         if (!firestore || !appUser?.id) return null;
         return query(collection(firestore, 'courses'), where('teacherId', '==', appUser.id));
-    }, [firestore, appUser.id]);
+    }, [firestore, appUser?.id]);
 
     const { data: teacherCourses, isLoading: areCoursesLoading, refetch } = useCollection<Course>(teacherCoursesQuery);
     
     useEffect(() => {
-      if(!isAuthLoading && teacherCoursesQuery) {
+      if(teacherCoursesQuery) {
         refetch();
       }
-    }, [isAuthLoading, teacherCoursesQuery, refetch]);
+    }, [teacherCoursesQuery, refetch]);
 
 
     if (areCoursesLoading) {
@@ -86,10 +85,10 @@ export default function TeacherDashboardPage() {
   const { data: appUser, isLoading: isAppUserLoading, refetch } = useDoc<AppUser>(appUserRef);
   
   useEffect(() => {
-    if(!isAuthLoading && appUserRef) {
+    if(appUserRef) {
       refetch();
     }
-  }, [isAuthLoading, appUserRef, refetch]);
+  }, [appUserRef, refetch]);
 
   const isLoading = isAuthLoading || isAppUserLoading;
   

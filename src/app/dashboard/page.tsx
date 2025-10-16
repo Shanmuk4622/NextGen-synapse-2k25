@@ -29,11 +29,10 @@ function EnrolledCourseCard({ course }: { course: Course }) {
   }, [teacherRef, refetch]);
 
   const [progress, setProgress] = useState(0);
+  
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setProgress(Math.floor(Math.random() * 81) + 20);
-    }, 500);
-    return () => clearTimeout(timer);
+    // This effect should only run on the client after hydration
+    setProgress(Math.floor(Math.random() * 81) + 20);
   }, []);
 
   if (isTeacherLoading || !course) {
@@ -62,8 +61,17 @@ function EnrolledCourseCard({ course }: { course: Course }) {
         <CardContent className="flex-grow">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Your progress:</p>
-            <Progress value={progress} aria-label={`${progress}% complete`} />
-            <p className="text-xs text-right text-muted-foreground">{progress}%</p>
+            {progress > 0 ? (
+              <>
+                <Progress value={progress} aria-label={`${progress}% complete`} />
+                <p className="text-xs text-right text-muted-foreground">{progress}%</p>
+              </>
+            ) : (
+              <div className='space-y-2'>
+                <div className="h-4 bg-muted rounded animate-pulse"></div>
+                <div className="h-3 bg-muted rounded w-1/4 animate-pulse ml-auto"></div>
+              </div>
+            )}
           </div>
         </CardContent>
         <CardFooter>
@@ -77,13 +85,13 @@ function EnrolledCourseCard({ course }: { course: Course }) {
 
 function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
   const firestore = useFirestore();
-  const { isAuthLoading } = useUser();
   const courseIds = useMemo(() => {
     if (!enrollments || enrollments.length === 0) return [];
     return enrollments.map(e => e.courseId);
   }, [enrollments]);
 
   const coursesQuery = useMemoFirebase(() => {
+    // Slice to 30 to stay within 'in' query limits
     if (!firestore || courseIds.length === 0) return null;
     return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds.slice(0, 30)));
   }, [firestore, courseIds]);
@@ -91,10 +99,10 @@ function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
   const { data: courses, isLoading: areCoursesLoading, refetch } = useCollection<Course>(coursesQuery);
 
   useEffect(() => {
-    if (!isAuthLoading && coursesQuery) {
+    if (coursesQuery) {
       refetch();
     }
-  }, [isAuthLoading, coursesQuery, refetch]);
+  }, [coursesQuery, refetch]);
 
   if (areCoursesLoading) {
     return <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -137,20 +145,19 @@ function EnrolledCourseCardSkeleton() {
 
 function StudentDashboard({ appUser }: { appUser: AppUser }) {
   const firestore = useFirestore();
-  const { isAuthLoading } = useUser();
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !appUser?.id) return null;
     return collection(firestore, `users/${appUser.id}/enrollments`);
-  }, [firestore, appUser.id]);
+  }, [firestore, appUser?.id]);
 
   const { data: enrollments, isLoading: areEnrollmentsLoading, refetch } = useCollection<Enrollment>(enrollmentsQuery);
 
   useEffect(() => {
-    if (!isAuthLoading && enrollmentsQuery) {
+    if (enrollmentsQuery) {
       refetch();
     }
-  }, [isAuthLoading, enrollmentsQuery, refetch]);
+  }, [enrollmentsQuery, refetch]);
 
 
   if (areEnrollmentsLoading) {
@@ -186,10 +193,11 @@ export default function DashboardPage() {
   const { data: appUser, isLoading: isAppUserLoading, refetch } = useDoc<AppUser>(appUserRef);
 
   useEffect(() => {
-    if (!isAuthLoading && appUserRef) {
+    // Refetch appUser only when the reference is valid and auth is resolved.
+    if (appUserRef) {
       refetch();
     }
-  }, [isAuthLoading, appUserRef, refetch]);
+  }, [appUserRef, refetch]);
   
   const isLoading = isAuthLoading || isAppUserLoading;
   

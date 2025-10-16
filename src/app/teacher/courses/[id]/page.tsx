@@ -69,7 +69,6 @@ function StudentRow({ studentId }: { studentId: string }) {
 
 function EnrolledStudents({ courseId }: { courseId: string }) {
   const firestore = useFirestore();
-  const { isAuthLoading } = useUser();
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !courseId) return null;
@@ -79,10 +78,10 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
   const { data: enrollments, isLoading: areEnrollmentsLoading, refetch } = useCollection<Enrollment>(enrollmentsQuery);
 
   useEffect(() => {
-    if (!isAuthLoading && enrollmentsQuery) {
+    if (enrollmentsQuery) {
       refetch();
     }
-  }, [isAuthLoading, enrollmentsQuery, refetch]);
+  }, [enrollmentsQuery, refetch]);
 
   if (areEnrollmentsLoading) {
     return <p className="text-muted-foreground text-center py-4">Loading students...</p>;
@@ -128,13 +127,16 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   const { data: appUser, isLoading: isAppUserLoading, refetch: refetchAppUser } = useDoc<AppUser>(appUserRef);
   
   useEffect(() => {
-    if (!isAuthLoading && courseRef) {
+    if (courseRef) {
       refetchCourse();
     }
-    if (!isAuthLoading && appUserRef) {
+  }, [courseRef, refetchCourse]);
+
+  useEffect(() => {
+    if (appUserRef) {
       refetchAppUser();
     }
-  }, [isAuthLoading, courseRef, appUserRef, refetchCourse, refetchAppUser]);
+  }, [appUserRef, refetchAppUser]);
 
 
   const isLoading = isAuthLoading || isAppUserLoading || isCourseLoading;
