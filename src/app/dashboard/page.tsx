@@ -20,12 +20,20 @@ function EnrolledCourseCard({ course }: { course: Course }) {
     return doc(firestore, 'users', course.teacherId);
   }, [firestore, course?.teacherId]);
 
-  const { data: teacher, isLoading: isTeacherLoading } = useDoc<AppUser>(teacherRef);
+  const { data: teacher, isLoading: isTeacherLoading, refetch } = useDoc<AppUser>(teacherRef);
   
+  useEffect(() => {
+    if (teacherRef) {
+      refetch();
+    }
+  }, [teacherRef, refetch]);
+
   const [progress, setProgress] = useState(0);
   useEffect(() => {
-    // This is a placeholder for actual progress tracking
-    setProgress(Math.floor(Math.random() * 81) + 20); 
+    const timer = setTimeout(() => {
+      setProgress(Math.floor(Math.random() * 81) + 20);
+    }, 500);
+    return () => clearTimeout(timer);
   }, []);
 
   if (isTeacherLoading || !course) {
@@ -69,18 +77,24 @@ function EnrolledCourseCard({ course }: { course: Course }) {
 
 function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
   const firestore = useFirestore();
+  const { isAuthLoading } = useUser();
   const courseIds = useMemo(() => {
     if (!enrollments || enrollments.length === 0) return [];
     return enrollments.map(e => e.courseId);
   }, [enrollments]);
 
   const coursesQuery = useMemoFirebase(() => {
-    // Important: Only create the query if there are course IDs to fetch.
     if (!firestore || courseIds.length === 0) return null;
     return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds.slice(0, 30)));
   }, [firestore, courseIds]);
 
-  const { data: courses, isLoading: areCoursesLoading } = useCollection<Course>(coursesQuery);
+  const { data: courses, isLoading: areCoursesLoading, refetch } = useCollection<Course>(coursesQuery);
+
+  useEffect(() => {
+    if (!isAuthLoading && coursesQuery) {
+      refetch();
+    }
+  }, [isAuthLoading, coursesQuery, refetch]);
 
   if (areCoursesLoading) {
     return <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -90,8 +104,6 @@ function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
   }
   
   if (!courses || courses.length === 0) {
-    // This case should ideally be handled by the parent component (StudentDashboard)
-    // but serves as a fallback.
     return <div>You are enrolled in courses that could not be found.</div>
   }
 
@@ -125,13 +137,21 @@ function EnrolledCourseCardSkeleton() {
 
 function StudentDashboard({ appUser }: { appUser: AppUser }) {
   const firestore = useFirestore();
+  const { isAuthLoading } = useUser();
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !appUser?.id) return null;
     return collection(firestore, `users/${appUser.id}/enrollments`);
   }, [firestore, appUser.id]);
 
-  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+  const { data: enrollments, isLoading: areEnrollmentsLoading, refetch } = useCollection<Enrollment>(enrollmentsQuery);
+
+  useEffect(() => {
+    if (!isAuthLoading && enrollmentsQuery) {
+      refetch();
+    }
+  }, [isAuthLoading, enrollmentsQuery, refetch]);
+
 
   if (areEnrollmentsLoading) {
     return <div>Loading your courses...</div>;
@@ -150,7 +170,6 @@ function StudentDashboard({ appUser }: { appUser: AppUser }) {
      );
   }
 
-  // Only render EnrolledCoursesList if there are enrollments to process
   return <EnrolledCoursesList enrollments={enrollments} />;
 }
 
@@ -164,7 +183,13 @@ export default function DashboardPage() {
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
 
-  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
+  const { data: appUser, isLoading: isAppUserLoading, refetch } = useDoc<AppUser>(appUserRef);
+
+  useEffect(() => {
+    if (!isAuthLoading && appUserRef) {
+      refetch();
+    }
+  }, [isAuthLoading, appUserRef, refetch]);
   
   const isLoading = isAuthLoading || isAppUserLoading;
   
@@ -184,10 +209,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Once all user data is loaded, render the appropriate dashboard
   if (appUser.role === 'teacher') {
-    // Redirect or render teacher dashboard if preferred
-    // For now, we can show a link.
     return (
         <div className="container py-8 md:py-12 text-center">
             <h1 className="font-headline text-3xl md:text-4xl font-bold">Welcome, {appUser.name.split(' ')[0]}!</h1>

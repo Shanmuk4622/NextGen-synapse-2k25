@@ -1,17 +1,17 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   DocumentReference,
   DocumentData,
   FirestoreError,
   DocumentSnapshot,
+  Unsubscribe,
 } from 'firebase/firestore';
 import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useUser } from '../provider';
 
 export type WithId<T> = T & { id: string };
 
@@ -19,26 +19,38 @@ export interface UseDocResult<T> {
   data: WithId<T> | null;
   isLoading: boolean;
   error: FirestoreError | Error | null;
+  refetch: () => void;
 }
 
 /**
  * React hook to subscribe to a single Firestore document.
+ * This hook does NOT automatically fetch data. It provides a `refetch` function
+ * that must be called to initiate the data subscription.
  */
 export function useDoc<T = any>(
-  memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined,
+  memoizedDocRef: DocumentReference<DocumentData> | null,
 ): UseDocResult<T> {
   const [data, setData] = useState<WithId<T> | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const { isAuthLoading } = useUser(); // Depend on the auth loading state
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    // **Guard:** If the doc ref isn't ready OR if auth is still loading, do nothing.
-    // This is the critical guard to prevent premature fetches and invalid doc refs.
-    if (!memoizedDocRef || isAuthLoading) {
+  const unsubscribeRef = useRef<Unsubscribe | null>(null);
+
+  const refetch = useCallback(() => {
+    // If there's an existing listener, unsubscribe before creating a new one.
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+    }
+    
+    // **Guard:** If the doc ref isn't ready, do nothing.
+    if (!memoizedDocRef) {
       setData(null);
       setError(null);
-      return; // Stop and wait for a valid doc ref or for auth to complete.
+      setIsLoading(false);
+      return;
     }
+
+    setIsLoading(true);
 
     const unsubscribe = onSnapshot(
       memoizedDocRef,
@@ -46,10 +58,10 @@ export function useDoc<T = any>(
         if (snapshot.exists()) {
           setData({ ...(snapshot.data() as T), id: snapshot.id });
         } else {
-          // Document does not exist
           setData(null);
         }
         setError(null);
+        setIsLoading(false);
       },
       (error: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
@@ -59,19 +71,23 @@ export function useDoc<T = any>(
 
         setError(contextualError);
         setData(null);
+        setIsLoading(false);
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
-    return () => unsubscribe();
-  }, [memoizedDocRef, isAuthLoading]); // Re-run effect when doc ref or auth state changes
+    unsubscribeRef.current = unsubscribe;
 
-  if(memoizedDocRef && !memoizedDocRef.__memo) {
-    throw new Error('A firestore query was not properly memoized using useMemoFirebase');
-  }
+  }, [memoizedDocRef]);
 
-  // isLoading is true if auth is loading, or if a docRef is provided but we don't have data/error yet.
-  const isLoading = isAuthLoading || (!!memoizedDocRef && data === null && error === null);
+  // Cleanup effect to unsubscribe when the component unmounts or the ref changes.
+  useEffect(() => {
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
+  }, [memoizedDocRef]);
   
-  return { data, isLoading, error };
+  return { data, isLoading, error, refetch };
 }

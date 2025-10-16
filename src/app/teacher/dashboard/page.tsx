@@ -8,17 +8,26 @@ import { PlusCircle, Users, BookOpen } from "lucide-react";
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase";
 import type { User as AppUser, Course } from "@/lib/types";
 import { doc, collection, query, where } from "firebase/firestore";
+import { useEffect } from "react";
 
 function TeacherCourses({ appUser }: { appUser: AppUser }) {
     const firestore = useFirestore();
+    const { isAuthLoading } = useUser();
 
     const teacherCoursesQuery = useMemoFirebase(() => {
         if (!firestore || !appUser?.id) return null;
         return query(collection(firestore, 'courses'), where('teacherId', '==', appUser.id));
     }, [firestore, appUser.id]);
 
-    const { data: teacherCourses, isLoading: areCoursesLoading } = useCollection<Course>(teacherCoursesQuery);
+    const { data: teacherCourses, isLoading: areCoursesLoading, refetch } = useCollection<Course>(teacherCoursesQuery);
     
+    useEffect(() => {
+      if(!isAuthLoading && teacherCoursesQuery) {
+        refetch();
+      }
+    }, [isAuthLoading, teacherCoursesQuery, refetch]);
+
+
     if (areCoursesLoading) {
         return <div>Loading your courses...</div>;
     }
@@ -74,8 +83,14 @@ export default function TeacherDashboardPage() {
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
 
-  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
+  const { data: appUser, isLoading: isAppUserLoading, refetch } = useDoc<AppUser>(appUserRef);
   
+  useEffect(() => {
+    if(!isAuthLoading && appUserRef) {
+      refetch();
+    }
+  }, [isAuthLoading, appUserRef, refetch]);
+
   const isLoading = isAuthLoading || isAppUserLoading;
   
   if (isLoading) {

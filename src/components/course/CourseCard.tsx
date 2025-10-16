@@ -8,6 +8,7 @@ import { Clock, UserCircle } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
+import { useEffect } from "react";
 
 type CourseCardProps = {
   course: Course;
@@ -21,7 +22,13 @@ function TeacherProfile({ teacherId }: { teacherId: string }) {
     return doc(firestore, 'users', teacherId);
   }, [firestore, teacherId]);
 
-  const { data: teacher, isLoading } = useDoc<User>(teacherRef);
+  const { data: teacher, isLoading, refetch } = useDoc<User>(teacherRef);
+
+  useEffect(() => {
+    if(teacherRef) {
+      refetch();
+    }
+  }, [teacherRef, refetch]);
 
   if (isLoading) {
     return (

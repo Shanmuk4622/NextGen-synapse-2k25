@@ -23,7 +23,13 @@ function TeacherProfile({ teacherId }: { teacherId: string }) {
     return doc(firestore, 'users', teacherId);
   }, [firestore, teacherId]);
 
-  const { data: teacher, isLoading } = useDoc<User>(teacherRef);
+  const { data: teacher, isLoading, refetch } = useDoc<User>(teacherRef);
+
+  useEffect(() => {
+    if (teacherRef) {
+      refetch();
+    }
+  }, [teacherRef, refetch]);
 
   if (isLoading) {
     return <span>Loading teacher...</span>;
@@ -38,7 +44,7 @@ function TeacherProfile({ teacherId }: { teacherId: string }) {
 }
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
-  const id = React.use(params).id;
+  const id = params.id;
   const { user, isAuthLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -48,14 +54,27 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     if (!firestore || !id) return null;
     return doc(firestore, 'courses', id);
   }, [firestore, id]);
-  const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
+  const { data: course, isLoading: isCourseLoading, refetch: refetchCourse } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !id) return null;
     return query(collection(firestore, `users/${user.uid}/enrollments`), where('courseId', '==', id));
   }, [firestore, id, user?.uid]);
 
-  const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+  const { data: userEnrollment, isLoading: areEnrollmentsLoading, refetch: refetchEnrollments } = useCollection<Enrollment>(enrollmentsQuery);
+  
+  useEffect(() => {
+    if (!isAuthLoading && courseRef) {
+      refetchCourse();
+    }
+  }, [isAuthLoading, courseRef, refetchCourse]);
+
+  useEffect(() => {
+    if (!isAuthLoading && enrollmentsQuery) {
+      refetchEnrollments();
+    }
+  }, [isAuthLoading, enrollmentsQuery, refetchEnrollments]);
+
 
   useEffect(() => {
     if (userEnrollment) {
