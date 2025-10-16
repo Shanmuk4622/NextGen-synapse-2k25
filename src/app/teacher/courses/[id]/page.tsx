@@ -16,11 +16,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from "@/firebase";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import type { User as AppUser, Course, Enrollment } from "@/lib/types";
-import { doc, getDoc, collection, query, where, collectionGroup } from "firebase/firestore";
+import { doc, collectionGroup, query, where } from "firebase/firestore";
 
-function StudentRow({ studentId, enrollmentDate }: { studentId: string; enrollmentDate: any }) {
+function StudentRow({ studentId }: { studentId: string }) {
     const firestore = useFirestore();
 
     const studentRef = useMemoFirebase(() => {
@@ -30,24 +30,17 @@ function StudentRow({ studentId, enrollmentDate }: { studentId: string; enrollme
 
     const { data: student, isLoading } = useDoc<AppUser>(studentRef);
 
-    if (isLoading) {
+    if (isLoading || !student) {
         return (
             <TableRow>
-                <TableCell>
+                <TableCell colSpan={2}>
                     <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8 bg-muted animate-pulse" />
                         <span className="h-4 bg-muted rounded w-24 animate-pulse"></span>
                     </div>
                 </TableCell>
-                <TableCell className="text-right">
-                    <span className="h-4 bg-muted rounded w-16 animate-pulse"></span>
-                </TableCell>
             </TableRow>
         );
-    }
-    
-    if (!student) {
-        return null;
     }
 
     return (
@@ -59,7 +52,7 @@ function StudentRow({ studentId, enrollmentDate }: { studentId: string; enrollme
                 <span className="font-medium">{student.name}</span>
             </TableCell>
             <TableCell className="text-right text-muted-foreground text-sm">
-                {enrollmentDate?.toDate().toLocaleDateString() || 'N/A'}
+                Enrolled
             </TableCell>
         </TableRow>
     );
@@ -88,12 +81,12 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
         <TableHeader>
           <TableRow>
             <TableHead>Student</TableHead>
-            <TableHead className="text-right">Enrolled</TableHead>
+            <TableHead className="text-right">Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {enrollments.map(enrollment => (
-             enrollment && enrollment.studentId && <StudentRow key={enrollment.id} studentId={enrollment.studentId} enrollmentDate={enrollment.enrollmentDate} />
+             enrollment && enrollment.studentId && <StudentRow key={enrollment.id} studentId={enrollment.studentId} />
           ))}
         </TableBody>
       </Table>
@@ -103,9 +96,8 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
 
 export default function TeacherCoursePage({ params }: { params: { id: string } }) {
   const id = React.use(params).id;
-  const { user, isUserLoading: isAuthLoading } = useUser();
+  const { user } = useUser();
   const firestore = useFirestore();
-  const [appUser, setAppUser] = useState<AppUser | null>(null);
 
   const courseRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -113,28 +105,13 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   }, [firestore, id]);
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
   
-  const [isAppUserLoading, setIsAppUserLoading] = useState(true);
-  useEffect(() => {
-    if (isAuthLoading || !user || !firestore) {
-      if (!isAuthLoading) setIsAppUserLoading(false);
-      return;
-    };
-    
-    setIsAppUserLoading(true);
-    const userDocRef = doc(firestore, 'users', user.uid);
-    getDoc(userDocRef).then(docSnap => {
-      if (docSnap.exists()) {
-        setAppUser(docSnap.data() as AppUser);
-      } else {
-        setAppUser(null);
-      }
-    })
-    .catch(() => setAppUser(null))
-    .finally(() => setIsAppUserLoading(false));
-  }, [user, isAuthLoading, firestore]);
-
+  const appUserRef = useMemoFirebase(() => {
+      if(!firestore || !user?.uid) return null;
+      return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid])
+  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
   
-  const isLoading = isAuthLoading || isAppUserLoading || isCourseLoading;
+  const isLoading = isAppUserLoading || isCourseLoading;
 
   if (isLoading) {
     return <div>Loading...</div>;

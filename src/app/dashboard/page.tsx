@@ -8,19 +8,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { User as AppUser, Course, Enrollment } from '@/lib/types';
-import { doc, getDoc, collection, query, where, documentId } from 'firebase/firestore';
+import { doc, collection, query, where, documentId } from 'firebase/firestore';
 
-function EnrolledCourseCard({ courseId }: { courseId: string }) {
+function EnrolledCourseCard({ course }: { course: Course }) {
   const firestore = useFirestore();
-
-  const courseRef = useMemoFirebase(() => {
-    if (!firestore || !courseId) return null;
-    return doc(firestore, 'courses', courseId);
-  }, [firestore, courseId]);
-
-  const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const teacherRef = useMemoFirebase(() => {
     if (!firestore || !course?.teacherId) return null;
@@ -28,10 +21,8 @@ function EnrolledCourseCard({ courseId }: { courseId: string }) {
   }, [firestore, course?.teacherId]);
 
   const { data: teacher, isLoading: isTeacherLoading } = useDoc<AppUser>(teacherRef);
-
-  const isLoading = isCourseLoading || isTeacherLoading;
   
-  if (isLoading) {
+  if (isTeacherLoading || !course) {
     return (
       <Card className="flex flex-col">
         <CardHeader>
@@ -46,10 +37,6 @@ function EnrolledCourseCard({ courseId }: { courseId: string }) {
         </CardFooter>
       </Card>
     );
-  }
-
-  if (!course) {
-    return null;
   }
   
   const progress = Math.floor(Math.random() * 81) + 20; // Mock progress
@@ -76,7 +63,32 @@ function EnrolledCourseCard({ courseId }: { courseId: string }) {
   );
 }
 
-function EnrolledCoursesList({ appUser }: { appUser: AppUser }) {
+function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
+  const firestore = useFirestore();
+  const courseIds = useMemo(() => enrollments.map(e => e.courseId), [enrollments]);
+
+  const coursesQuery = useMemoFirebase(() => {
+    if (!firestore || courseIds.length === 0) return null;
+    // Firestore 'in' queries are limited to 30 items.
+    return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds.slice(0, 30)));
+  }, [firestore, courseIds]);
+
+  const { data: courses, isLoading: areCoursesLoading } = useCollection<Course>(coursesQuery);
+
+  if (areCoursesLoading) {
+    return <div>Loading course details...</div>
+  }
+
+  return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {courses?.map(course => (
+          <EnrolledCourseCard key={course.id} course={course} />
+        ))}
+      </div>
+  );
+}
+
+function StudentDashboard({ appUser }: { appUser: AppUser }) {
   const firestore = useFirestore();
 
   const enrollmentsQuery = useMemoFirebase(() => {
@@ -103,44 +115,22 @@ function EnrolledCoursesList({ appUser }: { appUser: AppUser }) {
      );
   }
 
-  return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {enrollments.map(enrollment => (
-          <EnrolledCourseCard key={enrollment.id} courseId={enrollment.courseId} />
-        ))}
-      </div>
-  );
+  return <EnrolledCoursesList enrollments={enrollments} />;
 }
 
 
 export default function DashboardPage() {
-  const { user, isUserLoading: isAuthLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const [appUser, setAppUser] = useState<AppUser | null>(null);
-  const [isAppUserLoading, setIsAppUserLoading] = useState(true);
 
-  useEffect(() => {
-    if (isAuthLoading || !user || !firestore) {
-      if (!isAuthLoading) setIsAppUserLoading(false);
-      return;
-    }
-    
-    setIsAppUserLoading(true);
-    const userDocRef = doc(firestore, 'users', user.uid);
-    getDoc(userDocRef)
-      .then(docSnap => {
-        if (docSnap.exists()) {
-          setAppUser(docSnap.data() as AppUser);
-        } else {
-          setAppUser(null);
-        }
-      })
-      .catch(() => setAppUser(null))
-      .finally(() => setIsAppUserLoading(false));
+  const appUserRef = useMemoFirebase(() => {
+    if(!firestore || !user?.uid) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
 
-  }, [user, isAuthLoading, firestore]);
-
-  const isLoading = isAuthLoading || isAppUserLoading;
+  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
+  
+  const isLoading = isUserLoading || isAppUserLoading;
   
   if (isLoading) {
     return <div>Loading...</div>;
@@ -169,7 +159,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-8">
           <section>
             <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
-            {appUser && <EnrolledCoursesList appUser={appUser} />}
+            {appUser && <StudentDashboard appUser={appUser} />}
           </section>
 
           <section>

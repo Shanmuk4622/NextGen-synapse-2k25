@@ -5,13 +5,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Users, BookOpen } from "lucide-react";
-import { useUser, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
-import { useEffect, useState } from "react";
+import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase";
 import type { User as AppUser, Course } from "@/lib/types";
-import { doc, getDoc, collection, query, where } from "firebase/firestore";
+import { doc, collection, query, where } from "firebase/firestore";
 
-
-// NEW, DEDICATED COMPONENT FOR FETCHING AND DISPLAYING TEACHER'S COURSES
 function TeacherCourses({ appUser }: { appUser: AppUser }) {
     const firestore = useFirestore();
 
@@ -69,33 +66,17 @@ function TeacherCourses({ appUser }: { appUser: AppUser }) {
 
 
 export default function TeacherDashboardPage() {
-  const { user, isUserLoading: isAuthLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const [appUser, setAppUser] = useState<AppUser | null>(null);
-  const [isAppUserLoading, setIsAppUserLoading] = useState(true);
-
-  // PARENT COMPONENT'S ONLY JOB IS TO GET THE APP USER
-  useEffect(() => {
-    if (isAuthLoading || !user || !firestore) {
-      if (!isAuthLoading) setIsAppUserLoading(false);
-      return;
-    };
-    
-    setIsAppUserLoading(true);
-    const userDocRef = doc(firestore, 'users', user.uid);
-    getDoc(userDocRef)
-      .then(docSnap => {
-        if (docSnap.exists()) {
-          setAppUser(docSnap.data() as AppUser);
-        } else {
-          setAppUser(null);
-        }
-      })
-      .catch(() => setAppUser(null))
-      .finally(() => setIsAppUserLoading(false));
-  }, [user, isAuthLoading, firestore]);
   
-  const isLoading = isAuthLoading || isAppUserLoading;
+  const appUserRef = useMemoFirebase(() => {
+    if(!firestore || !user?.uid) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
+
+  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
+  
+  const isLoading = isUserLoading || isAppUserLoading;
   
   if (isLoading) {
     return <div>Loading...</div>;
@@ -130,7 +111,6 @@ export default function TeacherDashboardPage() {
 
       <section>
         <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
-        {/* RENDER THE NEW COMPONENT ONLY WHEN appUser IS READY */}
         {appUser && <TeacherCourses appUser={appUser} />}
       </section>
     </div>

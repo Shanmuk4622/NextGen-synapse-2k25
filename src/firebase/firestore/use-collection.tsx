@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,7 +12,6 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useUser } from '@/firebase/provider'; // Import useUser to check auth state
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -40,7 +40,8 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
- * Handles nullable references/queries and waits for authentication to be resolved.
+ * Handles nullable references. Assumes it is rendered inside a parent
+ * that has already waited for authentication to resolve.
  *
  * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
  * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
@@ -48,7 +49,7 @@ export interface InternalQuery extends Query<DocumentData> {
  *
  * @template T Optional type for document data. Defaults to any.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
- * The Firestore CollectionReference or Query. Waits if null/undefined.
+ * The Firestore CollectionReference or Query. If null/undefined, the hook will be in a loading state.
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
@@ -59,23 +60,19 @@ export function useCollection<T = any>(
 
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const { isUserLoading: isAuthLoading } = useUser(); // Get auth loading status
 
-  // isLoading is true if auth is loading OR if the query is running.
-  const isLoading = isAuthLoading || (!data && !error);
-
+  // isLoading is true if we have no data and no error yet.
+  const isLoading = !data && !error;
 
   useEffect(() => {
-    // CRITICAL GUARD: Do not proceed if auth is still loading or if the query is not ready.
-    if (isAuthLoading || !memoizedTargetRefOrQuery) {
+    // If the query is not ready, do nothing. The hook remains in a loading state.
+    if (!memoizedTargetRefOrQuery) {
       setData(null);
       setError(null);
       return;
     }
 
-    // At this point, auth is resolved and we have a query.
-    setError(null);
-
+    // Query is ready, start listening.
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
@@ -107,12 +104,11 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, isAuthLoading]); // Re-run if query or auth state changes.
+  }, [memoizedTargetRefOrQuery]); // Re-run only if the query itself changes.
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
+    throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // The hook's loading state now correctly reflects the authentication loading state.
   return { data, isLoading, error };
 }
