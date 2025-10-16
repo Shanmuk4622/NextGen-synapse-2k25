@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Users, BookOpen } from "lucide-react";
 import { useUser, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { User as AppUser, Course, Enrollment } from "@/lib/types";
 import { doc, getDoc, collection, query, where } from "firebase/firestore";
 
@@ -27,7 +27,7 @@ export default function TeacherDashboardPage() {
 
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
 
-  const courseIds = useMemoFirebase(() => {
+  const courseIds = useMemo(() => {
     if (!teacherCourses) return [];
     return teacherCourses.map(c => c.id);
   }, [teacherCourses]);

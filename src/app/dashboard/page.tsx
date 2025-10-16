@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { User as AppUser, Course, Enrollment } from '@/lib/types';
 import { doc, getDoc, collection, query, where, documentId } from 'firebase/firestore';
 
@@ -42,7 +42,7 @@ export default function DashboardPage() {
 
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
-  const courseIds = useMemoFirebase(() => {
+  const courseIds = useMemo(() => {
     if (!enrollments) return [];
     return enrollments.map(e => e.courseId);
   }, [enrollments]);

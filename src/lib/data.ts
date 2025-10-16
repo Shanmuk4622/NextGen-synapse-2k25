@@ -76,8 +76,3 @@ export const getCourseById = (id: string, allCourses: Course[] | null) => {
   if (!allCourses) return undefined;
   return allCourses.find(c => c.id === id);
 }
-
-export const getEnrollmentsByCourse = (courseId: string, allEnrollments: Enrollment[] | null) => {
-  if (!allEnrollments) return [];
-  return allEnrollments.filter(e => e.courseId === courseId);
-};

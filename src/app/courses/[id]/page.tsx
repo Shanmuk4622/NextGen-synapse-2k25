@@ -25,11 +25,11 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'enrollments'), where('courseId', '==', params.id));
-  }, [firestore, params.id]);
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'enrollments'), where('courseId', '==', params.id), where('studentId', '==', user.uid));
+  }, [firestore, params.id, user]);
   
-  const { data: allEnrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+  const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   if (isCourseLoading || areEnrollmentsLoading) {
       return <div>Loading...</div>;
@@ -42,7 +42,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const teacher = getTeacherById(course.teacherId);
   const placeholder = PlaceHolderImages.find(p => p.id === course.imageId);
   const assignments = getAssignmentsByCourse(course.id);
-  const isEnrolled = user && allEnrollments ? allEnrollments.some(e => e.studentId === user.uid) : false;
+  const isEnrolled = userEnrollment && userEnrollment.length > 0;
 
   return (
     <div className="bg-card">
