@@ -26,16 +26,15 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
 
 
   const courseRef = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !id) return null;
     return doc(firestore, 'courses', id);
   }, [firestore, id]);
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    // Query within the specific user's enrollments subcollection
+    if (!firestore || !user?.uid || !id) return null;
     return query(collection(firestore, `users/${user.uid}/enrollments`), where('courseId', '==', id));
-  }, [firestore, id, user]);
+  }, [firestore, id, user?.uid]);
 
   const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
@@ -55,7 +54,6 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     }
 
     try {
-      // Add the enrollment to the user's subcollection
       const enrollmentsCollection = collection(firestore, `users/${user.uid}/enrollments`);
       await addDoc(enrollmentsCollection, {
         id: uuidv4(),

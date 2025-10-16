@@ -49,8 +49,7 @@ export default function DashboardPage() {
   }, [enrollments]);
 
   const coursesQuery = useMemoFirebase(() => {
-    // Important: Do not run this query if the enrolledCourseIds array is null (loading) or empty.
-    if (!firestore || enrolledCourseIds === null || enrolledCourseIds.length === 0) {
+    if (!firestore || !enrolledCourseIds || enrolledCourseIds.length === 0) {
       return null;
     }
     return query(collection(firestore, 'courses'), where(documentId(), 'in', enrolledCourseIds));

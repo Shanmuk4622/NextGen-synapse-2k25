@@ -16,8 +16,8 @@ export default function TeacherDashboardPage() {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
 
   const userDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'users', user.uid) : null),
-    [user, firestore]
+    () => (firestore && user?.uid ? doc(firestore, 'users', user.uid) : null),
+    [firestore, user?.uid]
   );
   
   const teacherCoursesQuery = useMemoFirebase(() => {

@@ -31,8 +31,8 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   const [appUser, setAppUser] = useState<AppUser | null>(null);
 
   const userDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'users', user.uid) : null),
-    [user, firestore]
+    () => (firestore && user?.uid ? doc(firestore, 'users', user.uid) : null),
+    [firestore, user?.uid]
   );
 
   const courseRef = useMemoFirebase(() => {
@@ -42,7 +42,6 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
   
   const enrollmentsQuery = useMemoFirebase(() => {
-    // Important: Do not create the query until the course ID is available
     if (!firestore || !id) return null;
     return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', id));
   }, [firestore, id]);
@@ -61,7 +60,7 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
     }
   }, [userDocRef]);
 
-  if (isUserLoading || (user && !appUser) || isCourseLoading || (id && areEnrollmentsLoading)) {
+  if (isUserLoading || (user && !appUser) || isCourseLoading || areEnrollmentsLoading) {
     return <div>Loading...</div>;
   }
 
