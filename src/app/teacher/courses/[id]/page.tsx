@@ -63,7 +63,7 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
     return <div>Loading...</div>;
   }
 
-  if (!course || !appUser || (appUser.role === 'teacher' && course.teacherId !== appUser.id)) {
+  if (!course || !appUser || (appUser.role === 'teacher' && course.teacherId !== user.uid)) {
     notFound();
   }
 
