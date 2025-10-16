@@ -68,16 +68,19 @@ function StudentRow({ studentId, enrollmentDate }: { studentId: string; enrollme
 
 function EnrolledStudents({ courseId }: { courseId: string }) {
   const firestore = useFirestore();
+  const { isUserLoading: isAuthLoading } = useUser();
 
-  // DEFENSIVE CHECK: Only create query if courseId is valid
+  // DEFENSIVE CHECK: Only create query if courseId is valid and auth is resolved
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !courseId) return null;
+    if (isAuthLoading || !firestore || !courseId) return null;
     return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', courseId));
-  }, [firestore, courseId]);
+  }, [firestore, courseId, isAuthLoading]);
 
   const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
-  if (areEnrollmentsLoading) {
+  const isLoading = areEnrollmentsLoading || isAuthLoading;
+
+  if (isLoading) {
     return <p className="text-muted-foreground text-center py-4">Loading students...</p>;
   }
 
@@ -193,8 +196,8 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
               <CardTitle className="font-headline text-2xl">Enrolled Students</CardTitle>
             </CardHeader>
             <CardContent>
-                {/* RENDER GUARD: Only render when course is loaded */}
-                {course && id && <EnrolledStudents courseId={id} />}
+                {/* RENDER GUARD: Only render when course is loaded and auth is resolved */}
+                {course && id && !isLoading && <EnrolledStudents courseId={id} />}
             </CardContent>
           </Card>
         </div>

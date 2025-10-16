@@ -41,7 +41,7 @@ function TeacherProfile({ teacherId }: { teacherId: string }) {
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
   const id = React.use(params).id;
-  const { user } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isEnrolled, setIsEnrolled] = useState(false);
@@ -54,9 +54,10 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !id) return null;
+    // CRITICAL GUARD: Do not create query until auth is resolved and we have a user.
+    if (isAuthLoading || !firestore || !user?.uid || !id) return null;
     return query(collection(firestore, `users/${user.uid}/enrollments`), where('courseId', '==', id));
-  }, [firestore, id, user?.uid]);
+  }, [firestore, id, user?.uid, isAuthLoading]);
 
   const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
@@ -106,7 +107,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     }
   };
 
-  const isLoading = isCourseLoading || areEnrollmentsLoading;
+  const isLoading = isCourseLoading || areEnrollmentsLoading || isAuthLoading;
 
   if (isLoading) {
       return <div>Loading...</div>;
@@ -136,8 +137,8 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         <div className="container relative z-10 h-full flex flex-col justify-end pb-12">
           <h1 className="font-headline text-4xl md:text-6xl font-bold text-primary-foreground">{course.title}</h1>
           <div className="flex items-center gap-4 mt-4 text-primary-foreground/90">
-            {/* RENDER GUARD: Only render when course data is ready */}
-            {course.teacherId && <TeacherProfile teacherId={course.teacherId} />}
+            {/* RENDER GUARD: Only render when course data and auth state is ready */}
+            {course.teacherId && !isAuthLoading && <TeacherProfile teacherId={course.teacherId} />}
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
               <span>{course.duration}</span>
