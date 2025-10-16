@@ -16,25 +16,25 @@ export default function TeacherDashboardPage() {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [isAppUserLoading, setIsAppUserLoading] = useState(true);
 
-  // Step 1: Get the App User object
+  // Step 1: Get the App User object. This is a one-time fetch.
   useEffect(() => {
     if (isAuthLoading || !user || !firestore) {
-      if (!isAuthLoading) {
-        setIsAppUserLoading(false);
-      }
+      if (!isAuthLoading) setIsAppUserLoading(false);
       return;
     };
     
     setIsAppUserLoading(true);
     const userDocRef = doc(firestore, 'users', user.uid);
-    getDoc(userDocRef).then(docSnap => {
-      if (docSnap.exists()) {
-        setAppUser(docSnap.data() as AppUser);
-      } else {
-        setAppUser(null);
-      }
-      setIsAppUserLoading(false);
-    }).catch(() => setIsAppUserLoading(false));
+    getDoc(userDocRef)
+      .then(docSnap => {
+        if (docSnap.exists()) {
+          setAppUser(docSnap.data() as AppUser);
+        } else {
+          setAppUser(null);
+        }
+      })
+      .catch(() => setAppUser(null))
+      .finally(() => setIsAppUserLoading(false));
   }, [user, isAuthLoading, firestore]);
   
   // Step 2: Get the courses for the current teacher. This query depends on having a valid user.

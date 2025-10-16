@@ -31,11 +31,10 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [isAppUserLoading, setIsAppUserLoading] = useState(true);
 
+  // Step 1: Get the App User object. This is a one-time fetch.
   useEffect(() => {
     if (isAuthLoading || !user || !firestore) {
-      if (!isAuthLoading) {
-        setIsAppUserLoading(false);
-      }
+      if (!isAuthLoading) setIsAppUserLoading(false);
       return;
     };
     
@@ -47,24 +46,28 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
       } else {
         setAppUser(null);
       }
-      setIsAppUserLoading(false);
-    }).catch(() => setIsAppUserLoading(false));
+    })
+    .catch(() => setAppUser(null))
+    .finally(() => setIsAppUserLoading(false));
   }, [user, isAuthLoading, firestore]);
 
+  // Step 2: Get the course details. This depends on the `id` from params.
   const courseRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
     return doc(firestore, 'courses', id);
   }, [firestore, id]);
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
   
+  // Step 3: Get all enrollments for this specific course. This is a collection group query.
+  // It depends on having a valid `id`.
   const enrollmentsQuery = useMemoFirebase(() => {
-    // Only build the query if firestore and a course ID are available
     if (!firestore || !id) return null;
     return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', id));
   }, [firestore, id]);
   
   const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
+  // Master loading state
   const isLoading = isAuthLoading || isAppUserLoading || isCourseLoading || areEnrollmentsLoading;
 
   if (isLoading) {
