@@ -42,18 +42,22 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [isAuthLoading, setIsAuthLoading] = useState(true); // Always starts true
 
   useEffect(() => {
+    // onAuthStateChanged returns an unsubscribe function.
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      setIsAuthLoading(false); // Auth check is complete
+      // Once the listener fires for the first time, the initial auth check is complete.
+      setIsAuthLoading(false); 
     }, (error) => {
       console.error("FirebaseProvider: onAuthStateChanged error:", error);
       setUser(null);
-      setIsAuthLoading(false); // Auth check is complete, even on error
+      setIsAuthLoading(false); // Auth check is also complete on error.
     });
 
+    // The returned function will be called on component unmount.
     return () => unsubscribe();
   }, [auth]);
 
+  // Memoize context values to prevent unnecessary re-renders of consumers.
   const contextValue = useMemo((): FirebaseContextState => ({
     firebaseApp,
     firestore,
