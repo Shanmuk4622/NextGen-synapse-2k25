@@ -23,6 +23,7 @@ import { doc, getDoc, collection, query, where, collectionGroup } from "firebase
 function StudentRow({ studentId, enrollmentDate }: { studentId: string; enrollmentDate: any }) {
     const firestore = useFirestore();
 
+    // DEFENSIVE CHECK: Only create reference if studentId is valid
     const studentRef = useMemoFirebase(() => {
         if (!firestore || !studentId) return null;
         return doc(firestore, 'users', studentId);
@@ -68,6 +69,7 @@ function StudentRow({ studentId, enrollmentDate }: { studentId: string; enrollme
 function EnrolledStudents({ courseId }: { courseId: string }) {
   const firestore = useFirestore();
 
+  // DEFENSIVE CHECK: Only create query if courseId is valid
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !courseId) return null;
     return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', courseId));
@@ -93,7 +95,8 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
         </TableHeader>
         <TableBody>
           {enrollments.map(enrollment => (
-             <StudentRow key={enrollment.id} studentId={enrollment.studentId} enrollmentDate={enrollment.enrollmentDate} />
+             // RENDER GUARD: Only render if we have a valid enrollment and studentId
+             enrollment && enrollment.studentId && <StudentRow key={enrollment.id} studentId={enrollment.studentId} enrollmentDate={enrollment.enrollmentDate} />
           ))}
         </TableBody>
       </Table>
@@ -190,7 +193,8 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
               <CardTitle className="font-headline text-2xl">Enrolled Students</CardTitle>
             </CardHeader>
             <CardContent>
-                {id && <EnrolledStudents courseId={id} />}
+                {/* RENDER GUARD: Only render when course is loaded */}
+                {course && id && <EnrolledStudents courseId={id} />}
             </CardContent>
           </Card>
         </div>
