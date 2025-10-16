@@ -70,8 +70,8 @@ export function useDoc<T = any>(
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // isLoading is true if a docRef is provided but we don't have data or an error yet.
-  const isLoading = (!!memoizedDocRef && data === null && error === null);
+  // isLoading is true if a docRef is provided but we don't have data or an error yet, or if auth is loading.
+  const isLoading = (isAuthLoading || (!!memoizedDocRef && data === null && error === null));
   
   return { data, isLoading, error };
 }

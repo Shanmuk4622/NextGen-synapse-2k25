@@ -84,7 +84,7 @@ export function useCollection<T = any>(
   }
 
   // isLoading is true if a query is provided but we don't have data or an error yet.
-  const isLoading = (!!memoizedTargetRefOrQuery && data === null && error === null);
+  const isLoading = (isAuthLoading || (!!memoizedTargetRefOrQuery && data === null && error === null));
   
   return { data, isLoading, error };
 }
