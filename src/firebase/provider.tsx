@@ -46,7 +46,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       // Once the listener fires for the first time, the initial auth check is complete.
-      setIsAuthLoading(false); 
+      setIsAuthLoading(false);
     }, (error) => {
       console.error("FirebaseProvider: onAuthStateChanged error:", error);
       setUser(null);
