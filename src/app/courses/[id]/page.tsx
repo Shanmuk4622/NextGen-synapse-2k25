@@ -13,7 +13,6 @@ import { Clock, UserCircle, BookOpen, FileText, CheckCircle } from "lucide-react
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { doc, collection, query, where } from 'firebase/firestore';
 import type { Course, Enrollment } from '@/lib/types';
-import { useState } from "react";
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
   const { user } = useUser();

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { useEffect, useState } from 'react';
 import type { User as AppUser, Course, Enrollment } from '@/lib/types';
-import { doc, getDoc, collection, query, where } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, documentId } from 'firebase/firestore';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -49,7 +49,7 @@ export default function DashboardPage() {
 
   const coursesQuery = useMemoFirebase(() => {
     if (!firestore || !courseIds || courseIds.length === 0) return null;
-    return query(collection(firestore, 'courses'), where('id', 'in', courseIds));
+    return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds));
   }, [firestore, courseIds]);
 
   const { data: enrolledCourses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
