@@ -70,7 +70,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   // This prevents any child component from rendering and attempting to fetch
   // data before we know the user's authentication status.
   if (isAuthLoading) {
-    return null; 
+    return (
+      <div className="flex h-screen w-screen items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
   }
 
   return (
