@@ -11,6 +11,7 @@ import type {
 import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useUser } from '@/firebase/provider'; // Import useUser
 
 export type WithId<T> = T & { id: string };
 
@@ -39,13 +40,15 @@ export function useCollection<T = any>(
   const [data, setData] = useState<WithId<T>[] | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { isAuthLoading } = useUser(); // Get authentication loading status
 
   useEffect(() => {
-    // If the query is not ready, reset the state and do nothing.
-    if (!memoizedQuery) {
+    // If auth is loading OR the query is not ready, do nothing.
+    if (isAuthLoading || !memoizedQuery) {
       setData(null);
       setError(null);
-      setIsLoading(false); // Not loading if there's no query
+      // We are only truly "not loading" if auth is done and there's no query.
+      setIsLoading(isAuthLoading);
       return;
     }
 
@@ -76,7 +79,7 @@ export function useCollection<T = any>(
 
     // Unsubscribe from the listener when the component unmounts or the query changes.
     return () => unsubscribe();
-  }, [memoizedQuery]); // The effect re-runs whenever the memoized query changes.
+  }, [memoizedQuery, isAuthLoading]); // Re-run effect if query or auth status changes.
 
   return { data, isLoading, error };
 }

@@ -11,6 +11,7 @@ import type {
 import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useUser } from '@/firebase/provider'; // Import useUser
 
 export type WithId<T> = T & { id: string };
 
@@ -30,13 +31,16 @@ export function useDoc<T = any>(
   const [data, setData] = useState<WithId<T> | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { isAuthLoading } = useUser(); // Get authentication loading status
 
   useEffect(() => {
-    // If the document reference is not ready, reset the state and do nothing.
-    if (!memoizedDocRef) {
+    // If auth is loading OR the document reference is not ready, do nothing.
+    // Set loading to true if we expect a ref but don't have it yet.
+    if (isAuthLoading || !memoizedDocRef) {
       setData(null);
       setError(null);
-      setIsLoading(false); // Not loading if there's no ref
+      // We are only truly "not loading" if auth is done and there's no doc ref.
+      setIsLoading(isAuthLoading);
       return;
     }
 
@@ -48,6 +52,7 @@ export function useDoc<T = any>(
         if (snapshot.exists()) {
           setData({ ...(snapshot.data() as T), id: snapshot.id });
         } else {
+          // Document doesn't exist
           setData(null);
         }
         setError(null);
@@ -68,7 +73,7 @@ export function useDoc<T = any>(
 
     // Unsubscribe from the listener when the component unmounts or the ref changes.
     return () => unsubscribe();
-  }, [memoizedDocRef]); // The effect re-runs whenever the memoized ref changes.
+  }, [memoizedDocRef, isAuthLoading]); // Re-run effect if doc ref or auth status changes.
   
   return { data, isLoading, error };
 }
