@@ -45,7 +45,7 @@ export function useCollection<T = any>(
 
   useEffect(() => {
     // If the auth state is loading or the query isn't ready, do nothing.
-    // The parent FirebaseProvider now guarantees isAuthLoading will become false.
+    // This is the critical guard to prevent premature queries.
     if (isAuthLoading || !memoizedTargetRefOrQuery) {
       setData(null);
       setError(null);

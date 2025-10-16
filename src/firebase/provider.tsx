@@ -66,14 +66,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     isAuthLoading,
   }), [user, isAuthLoading]);
 
-  // THIS IS THE CRITICAL FIX:
-  // Do not render children until the initial auth check is complete.
-  // This prevents any child component from rendering and triggering
-  // a Firestore query before the auth state is known.
-  if (isAuthLoading) {
-    return null; // Or a global loading spinner
-  }
-
   return (
     <FirebaseContext.Provider value={contextValue}>
       <UserContext.Provider value={userContextValue}>
