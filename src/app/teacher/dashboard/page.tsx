@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { PlusCircle, Users, BookOpen } from "lucide-react";
 import { useUser, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { useEffect, useState, useMemo } from "react";
-import type { User as AppUser, Course, Enrollment } from "@/lib/types";
+import type { User as AppUser, Course } from "@/lib/types";
 import { doc, getDoc, collection, query, where } from "firebase/firestore";
 
 export default function TeacherDashboardPage() {
@@ -26,21 +26,6 @@ export default function TeacherDashboardPage() {
   }, [firestore, user]);
 
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
-
-  const courseIds = useMemo(() => {
-    if (!teacherCourses) return [];
-    return teacherCourses.map(c => c.id);
-  }, [teacherCourses]);
-
-  const enrollmentsQuery = useMemoFirebase(() => {
-    // This is the critical fix: If there are no courseIds, we must return null.
-    // An empty `in` query is invalid in Firestore and was causing the permission error.
-    if (!firestore || courseIds.length === 0) return null;
-    
-    return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
-  }, [firestore, courseIds]);
-
-  const { data: allEnrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   useEffect(() => {
     if (userDocRef) {
@@ -87,11 +72,11 @@ export default function TeacherDashboardPage() {
 
       <section>
         <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
-        {(coursesLoading || (courseIds.length > 0 && enrollmentsLoading)) && <p>Loading courses...</p>}
+        {coursesLoading && <p>Loading courses...</p>}
         {teacherCourses && teacherCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {teacherCourses.map(course => {
-              const enrollments = allEnrollments?.filter(e => e.courseId === course.id) || [];
+              const studentCount = course.studentCount || 0;
               return (
                 <Card key={course.id} className="hover:shadow-md transition-shadow">
                   <CardHeader>
@@ -101,7 +86,7 @@ export default function TeacherDashboardPage() {
                   <CardContent>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Users className="h-4 w-4" />
-                      <span>{enrollments.length} student{enrollments.length !== 1 && 's'} enrolled</span>
+                      <span>{studentCount} student{studentCount !== 1 && 's'} enrolled</span>
                     </div>
                   </CardContent>
                   <CardFooter>
@@ -114,7 +99,7 @@ export default function TeacherDashboardPage() {
             })}
           </div>
         ) : (
-          !(coursesLoading) && <div className="text-center py-12 border-2 border-dashed rounded-lg">
+          !coursesLoading && <div className="text-center py-12 border-2 border-dashed rounded-lg">
             <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">You haven't created any courses</h3>
             <p className="mt-2 text-sm text-muted-foreground">Get started by creating your first course.</p>

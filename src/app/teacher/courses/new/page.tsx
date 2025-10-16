@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,6 +58,7 @@ export default function CreateCoursePage() {
       ...values,
       teacherId: user.uid,
       imageId: randomImage.id,
+      studentCount: 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
