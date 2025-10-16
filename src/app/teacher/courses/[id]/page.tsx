@@ -42,7 +42,7 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !id) return null;
     // Use a collection group query to find all enrollments for this course
     return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', id));
   }, [firestore, id]);
