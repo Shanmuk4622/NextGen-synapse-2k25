@@ -26,7 +26,7 @@ function TeacherProfile({ teacherId }: { teacherId: string }) {
   const { data: teacher, isLoading } = useDoc<User>(teacherRef);
 
   if (isLoading) {
-    return <span>Loading...</span>;
+    return <span>Loading teacher...</span>;
   }
 
   return (
@@ -39,7 +39,7 @@ function TeacherProfile({ teacherId }: { teacherId: string }) {
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
   const id = React.use(params).id;
-  const { user } = useUser();
+  const { user, isAuthLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isEnrolled, setIsEnrolled] = useState(false);
@@ -58,7 +58,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   useEffect(() => {
-    setIsEnrolled(userEnrollment != null && userEnrollment.length > 0);
+    if (userEnrollment) {
+      setIsEnrolled(userEnrollment.length > 0);
+    }
   }, [userEnrollment]);
 
 
@@ -103,7 +105,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     }
   };
 
-  const isLoading = isCourseLoading || areEnrollmentsLoading;
+  const isLoading = isCourseLoading || isAuthLoading || (user && areEnrollmentsLoading);
 
   if (isLoading) {
       return <div>Loading...</div>;

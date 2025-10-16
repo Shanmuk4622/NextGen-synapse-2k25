@@ -66,7 +66,7 @@ function TeacherCourses({ appUser }: { appUser: AppUser }) {
 
 
 export default function TeacherDashboardPage() {
-  const { user, isUserLoading } = useUser();
+  const { user, isAuthLoading } = useUser();
   const firestore = useFirestore();
   
   const appUserRef = useMemoFirebase(() => {
@@ -76,7 +76,7 @@ export default function TeacherDashboardPage() {
 
   const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
   
-  const isLoading = isUserLoading || isAppUserLoading;
+  const isLoading = isAuthLoading || isAppUserLoading;
   
   if (isLoading) {
     return <div>Loading...</div>;

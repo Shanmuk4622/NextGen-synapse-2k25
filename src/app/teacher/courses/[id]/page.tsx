@@ -18,7 +18,7 @@ import {
 import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from "@/firebase";
 import React from "react";
 import type { User as AppUser, Course, Enrollment } from "@/lib/types";
-import { doc, collectionGroup, query, where } from "firebase/firestore";
+import { doc, collection, collectionGroup, query, where } from "firebase/firestore";
 
 function StudentRow({ studentId }: { studentId: string }) {
     const firestore = useFirestore();
@@ -35,9 +35,12 @@ function StudentRow({ studentId }: { studentId: string }) {
             <TableRow>
                 <TableCell colSpan={2}>
                     <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8 bg-muted animate-pulse" />
+                        <Avatar className="h-8 w-8 bg-muted animate-pulse rounded-full" />
                         <span className="h-4 bg-muted rounded w-24 animate-pulse"></span>
                     </div>
+                </TableCell>
+                <TableCell className="text-right">
+                    <span className="h-4 bg-muted rounded w-16 animate-pulse block"></span>
                 </TableCell>
             </TableRow>
         );
@@ -96,7 +99,7 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
 
 export default function TeacherCoursePage({ params }: { params: { id: string } }) {
   const id = React.use(params).id;
-  const { user } = useUser();
+  const { user, isAuthLoading } = useUser();
   const firestore = useFirestore();
 
   const courseRef = useMemoFirebase(() => {
@@ -111,13 +114,13 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   }, [firestore, user?.uid])
   const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
   
-  const isLoading = isAppUserLoading || isCourseLoading;
+  const isLoading = isAuthLoading || isAppUserLoading || isCourseLoading;
 
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
-  if (!course || !user || !appUser || (appUser.role === 'teacher' && course.teacherId !== user.uid)) {
+  if (!course || !user || !appUser || appUser.role !== 'teacher' || course.teacherId !== user.uid) {
     notFound();
   }
 

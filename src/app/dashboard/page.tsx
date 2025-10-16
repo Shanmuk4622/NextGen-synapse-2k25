@@ -24,7 +24,8 @@ function EnrolledCourseCard({ course }: { course: Course }) {
   
   const [progress, setProgress] = useState(0);
   useEffect(() => {
-    setProgress(Math.floor(Math.random() * 81) + 20); // Mock progress
+    // This is a placeholder for actual progress tracking
+    setProgress(Math.floor(Math.random() * 81) + 20); 
   }, []);
 
   if (isTeacherLoading || !course) {
@@ -68,9 +69,13 @@ function EnrolledCourseCard({ course }: { course: Course }) {
 
 function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
   const firestore = useFirestore();
-  const courseIds = useMemo(() => enrollments.map(e => e.courseId), [enrollments]);
+  const courseIds = useMemo(() => {
+    if (!enrollments || enrollments.length === 0) return [];
+    return enrollments.map(e => e.courseId);
+  }, [enrollments]);
 
   const coursesQuery = useMemoFirebase(() => {
+    // Important: Only create the query if there are course IDs to fetch.
     if (!firestore || courseIds.length === 0) return null;
     return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds.slice(0, 30)));
   }, [firestore, courseIds]);
@@ -78,10 +83,15 @@ function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
   const { data: courses, isLoading: areCoursesLoading } = useCollection<Course>(coursesQuery);
 
   if (areCoursesLoading) {
-    return <div>Loading course details...</div>
+    return <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <EnrolledCourseCardSkeleton />
+      <EnrolledCourseCardSkeleton />
+    </div>;
   }
   
   if (!courses || courses.length === 0) {
+    // This case should ideally be handled by the parent component (StudentDashboard)
+    // but serves as a fallback.
     return <div>You are enrolled in courses that could not be found.</div>
   }
 
@@ -93,6 +103,25 @@ function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
       </div>
   );
 }
+
+function EnrolledCourseCardSkeleton() {
+  return (
+    <Card className="flex flex-col">
+      <CardHeader>
+        <div className="h-6 bg-muted rounded w-3/4 animate-pulse"></div>
+        <div className="h-4 bg-muted rounded w-1/2 animate-pulse mt-2"></div>
+      </CardHeader>
+      <CardContent className="flex-grow">
+        <div className="h-4 bg-muted rounded w-full animate-pulse"></div>
+        <div className="h-4 bg-muted rounded w-3/4 animate-pulse mt-2"></div>
+      </CardContent>
+      <CardFooter>
+        <div className="h-10 bg-muted rounded w-full animate-pulse"></div>
+      </CardFooter>
+    </Card>
+  );
+}
+
 
 function StudentDashboard({ appUser }: { appUser: AppUser }) {
   const firestore = useFirestore();
@@ -121,6 +150,7 @@ function StudentDashboard({ appUser }: { appUser: AppUser }) {
      );
   }
 
+  // Only render EnrolledCoursesList if there are enrollments to process
   return <EnrolledCoursesList enrollments={enrollments} />;
 }
 
@@ -139,7 +169,7 @@ export default function DashboardPage() {
   const isLoading = isAuthLoading || isAppUserLoading;
   
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>Loading dashboard...</div>;
   }
   
   if (!user || !appUser) {
@@ -151,6 +181,21 @@ export default function DashboardPage() {
           <Link href="/login">Log In</Link>
         </Button>
       </div>
+    );
+  }
+
+  // Once all user data is loaded, render the appropriate dashboard
+  if (appUser.role === 'teacher') {
+    // Redirect or render teacher dashboard if preferred
+    // For now, we can show a link.
+    return (
+        <div className="container py-8 md:py-12 text-center">
+            <h1 className="font-headline text-3xl md:text-4xl font-bold">Welcome, {appUser.name.split(' ')[0]}!</h1>
+            <p className="text-muted-foreground mt-2 text-lg">You are registered as a teacher.</p>
+            <Button asChild className="mt-4">
+                <Link href="/teacher/dashboard">Go to Teacher Dashboard</Link>
+            </Button>
+        </div>
     );
   }
 
