@@ -28,13 +28,7 @@ function StudentRow({ studentId }: { studentId: string }) {
         return doc(firestore, 'users', studentId);
     }, [firestore, studentId]);
 
-    const { data: student, isLoading, refetch } = useDoc<AppUser>(studentRef);
-
-    useEffect(() => {
-      if(studentRef) {
-        refetch();
-      }
-    }, [studentRef, refetch]);
+    const { data: student, isLoading } = useDoc<AppUser>(studentRef);
 
     if (isLoading || !student) {
         return (
@@ -75,13 +69,7 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
     return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', courseId));
   }, [firestore, courseId]);
 
-  const { data: enrollments, isLoading: areEnrollmentsLoading, refetch } = useCollection<Enrollment>(enrollmentsQuery);
-
-  useEffect(() => {
-    if (enrollmentsQuery) {
-      refetch();
-    }
-  }, [enrollmentsQuery, refetch]);
+  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   if (areEnrollmentsLoading) {
     return <p className="text-muted-foreground text-center py-4">Loading students...</p>;
@@ -118,27 +106,14 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
     if (!firestore || !id) return null;
     return doc(firestore, 'courses', id);
   }, [firestore, id]);
-  const { data: course, isLoading: isCourseLoading, refetch: refetchCourse } = useDoc<Course>(courseRef);
+  const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
   
   const appUserRef = useMemoFirebase(() => {
       if(!firestore || !user?.uid) return null;
       return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid])
-  const { data: appUser, isLoading: isAppUserLoading, refetch: refetchAppUser } = useDoc<AppUser>(appUserRef);
+  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
   
-  useEffect(() => {
-    if (courseRef) {
-      refetchCourse();
-    }
-  }, [courseRef, refetchCourse]);
-
-  useEffect(() => {
-    if (appUserRef) {
-      refetchAppUser();
-    }
-  }, [appUserRef, refetchAppUser]);
-
-
   const isLoading = isAuthLoading || isAppUserLoading || isCourseLoading;
 
   if (isLoading) {

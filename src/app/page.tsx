@@ -21,13 +21,7 @@ export default function Home() {
     return collection(firestore, 'courses');
   }, [firestore]);
 
-  const { data: courses, isLoading, refetch } = useCollection<Course>(coursesQuery);
-
-  useEffect(() => {
-    if (coursesQuery) {
-      refetch();
-    }
-  }, [coursesQuery, refetch]);
+  const { data: courses, isLoading } = useCollection<Course>(coursesQuery);
 
   return (
     <div className="flex flex-col">

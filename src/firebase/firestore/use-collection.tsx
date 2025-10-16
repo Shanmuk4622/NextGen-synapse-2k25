@@ -1,13 +1,12 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type {
   Query,
   DocumentData,
   FirestoreError,
   QuerySnapshot,
-  Unsubscribe,
 } from 'firebase/firestore';
 import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -19,7 +18,6 @@ export interface UseCollectionResult<T> {
   data: WithId<T>[] | null;
   isLoading: boolean;
   error: FirestoreError | Error | null;
-  refetch: () => void;
 }
 
 export interface InternalQuery extends Query<DocumentData> {
@@ -33,36 +31,28 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query.
- * This hook does NOT automatically fetch data. It provides a `refetch` function
- * that must be called to initiate the data subscription.
+ * Automatically manages the subscription lifecycle based on the query provided.
  */
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: Query<DocumentData> | null,
+    memoizedQuery: Query<DocumentData> | null,
 ): UseCollectionResult<T> {
   const [data, setData] = useState<WithId<T>[] | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const unsubscribeRef = useRef<Unsubscribe | null>(null);
-
-  const refetch = useCallback(() => {
-    // If there's an existing listener, unsubscribe before creating a new one.
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-    }
-
-    // **Guard:** If the query isn't ready, do nothing and reset state.
-    if (!memoizedTargetRefOrQuery) {
+  useEffect(() => {
+    // If the query is not ready, reset the state and do nothing.
+    if (!memoizedQuery) {
       setData(null);
       setError(null);
-      setIsLoading(false);
+      setIsLoading(false); // Not loading if there's no query
       return;
     }
-    
+
     setIsLoading(true);
 
     const unsubscribe = onSnapshot(
-      memoizedTargetRefOrQuery,
+      memoizedQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: WithId<T>[] = snapshot.docs.map(doc => ({ ...(doc.data() as T), id: doc.id }));
         setData(results);
@@ -70,7 +60,7 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        const path: string = (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
+        const path: string = (memoizedQuery as unknown as InternalQuery)._query.path.canonicalString();
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',
@@ -84,18 +74,9 @@ export function useCollection<T = any>(
       }
     );
 
-    unsubscribeRef.current = unsubscribe;
+    // Unsubscribe from the listener when the component unmounts or the query changes.
+    return () => unsubscribe();
+  }, [memoizedQuery]); // The effect re-runs whenever the memoized query changes.
 
-  }, [memoizedTargetRefOrQuery]);
-
-  // Cleanup effect to unsubscribe when the component unmounts or the query changes.
-  useEffect(() => {
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-    };
-  }, []); // Only run cleanup on unmount.
-
-  return { data, isLoading, error, refetch };
+  return { data, isLoading, error };
 }

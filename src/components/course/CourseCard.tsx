@@ -22,13 +22,7 @@ function TeacherProfile({ teacherId }: { teacherId: string }) {
     return doc(firestore, 'users', teacherId);
   }, [firestore, teacherId]);
 
-  const { data: teacher, isLoading, refetch } = useDoc<User>(teacherRef);
-
-  useEffect(() => {
-    if(teacherRef) {
-      refetch();
-    }
-  }, [teacherRef, refetch]);
+  const { data: teacher, isLoading } = useDoc<User>(teacherRef);
 
   if (isLoading) {
     return (

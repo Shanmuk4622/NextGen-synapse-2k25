@@ -18,15 +18,8 @@ function TeacherCourses({ appUser }: { appUser: AppUser }) {
         return query(collection(firestore, 'courses'), where('teacherId', '==', appUser.id));
     }, [firestore, appUser?.id]);
 
-    const { data: teacherCourses, isLoading: areCoursesLoading, refetch } = useCollection<Course>(teacherCoursesQuery);
+    const { data: teacherCourses, isLoading: areCoursesLoading } = useCollection<Course>(teacherCoursesQuery);
     
-    useEffect(() => {
-      if(teacherCoursesQuery) {
-        refetch();
-      }
-    }, [teacherCoursesQuery, refetch]);
-
-
     if (areCoursesLoading) {
         return <div>Loading your courses...</div>;
     }
@@ -82,14 +75,8 @@ export default function TeacherDashboardPage() {
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
 
-  const { data: appUser, isLoading: isAppUserLoading, refetch } = useDoc<AppUser>(appUserRef);
+  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
   
-  useEffect(() => {
-    if(appUserRef) {
-      refetch();
-    }
-  }, [appUserRef, refetch]);
-
   const isLoading = isAuthLoading || isAppUserLoading;
   
   if (isLoading) {

@@ -23,13 +23,7 @@ function TeacherProfile({ teacherId }: { teacherId: string }) {
     return doc(firestore, 'users', teacherId);
   }, [firestore, teacherId]);
 
-  const { data: teacher, isLoading, refetch } = useDoc<User>(teacherRef);
-
-  useEffect(() => {
-    if (teacherRef) {
-      refetch();
-    }
-  }, [teacherRef, refetch]);
+  const { data: teacher, isLoading } = useDoc<User>(teacherRef);
 
   if (isLoading) {
     return <span>Loading teacher...</span>;
@@ -54,28 +48,15 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     if (!firestore || !id) return null;
     return doc(firestore, 'courses', id);
   }, [firestore, id]);
-  const { data: course, isLoading: isCourseLoading, refetch: refetchCourse } = useDoc<Course>(courseRef);
+  const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !id) return null;
     return query(collection(firestore, `users/${user.uid}/enrollments`), where('courseId', '==', id));
   }, [firestore, id, user?.uid]);
 
-  const { data: userEnrollment, isLoading: areEnrollmentsLoading, refetch: refetchEnrollments } = useCollection<Enrollment>(enrollmentsQuery);
+  const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
   
-  useEffect(() => {
-    if (courseRef) {
-      refetchCourse();
-    }
-  }, [courseRef, refetchCourse]);
-
-  useEffect(() => {
-    if (enrollmentsQuery) {
-      refetchEnrollments();
-    }
-  }, [enrollmentsQuery, refetchEnrollments]);
-
-
   useEffect(() => {
     if (userEnrollment) {
       setIsEnrolled(userEnrollment.length > 0);

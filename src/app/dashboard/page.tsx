@@ -20,14 +20,8 @@ function EnrolledCourseCard({ course }: { course: Course }) {
     return doc(firestore, 'users', course.teacherId);
   }, [firestore, course?.teacherId]);
 
-  const { data: teacher, isLoading: isTeacherLoading, refetch } = useDoc<AppUser>(teacherRef);
+  const { data: teacher, isLoading: isTeacherLoading } = useDoc<AppUser>(teacherRef);
   
-  useEffect(() => {
-    if (teacherRef) {
-      refetch();
-    }
-  }, [teacherRef, refetch]);
-
   const [progress, setProgress] = useState(0);
   
   useEffect(() => {
@@ -96,13 +90,7 @@ function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
     return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds.slice(0, 30)));
   }, [firestore, courseIds]);
 
-  const { data: courses, isLoading: areCoursesLoading, refetch } = useCollection<Course>(coursesQuery);
-
-  useEffect(() => {
-    if (coursesQuery) {
-      refetch();
-    }
-  }, [coursesQuery, refetch]);
+  const { data: courses, isLoading: areCoursesLoading } = useCollection<Course>(coursesQuery);
 
   if (areCoursesLoading) {
     return <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -151,14 +139,7 @@ function StudentDashboard({ appUser }: { appUser: AppUser }) {
     return collection(firestore, `users/${appUser.id}/enrollments`);
   }, [firestore, appUser?.id]);
 
-  const { data: enrollments, isLoading: areEnrollmentsLoading, refetch } = useCollection<Enrollment>(enrollmentsQuery);
-
-  useEffect(() => {
-    if (enrollmentsQuery) {
-      refetch();
-    }
-  }, [enrollmentsQuery, refetch]);
-
+  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   if (areEnrollmentsLoading) {
     return <div>Loading your courses...</div>;
@@ -190,15 +171,8 @@ export default function DashboardPage() {
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
 
-  const { data: appUser, isLoading: isAppUserLoading, refetch } = useDoc<AppUser>(appUserRef);
+  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
 
-  useEffect(() => {
-    // Refetch appUser only when the reference is valid and auth is resolved.
-    if (appUserRef) {
-      refetch();
-    }
-  }, [appUserRef, refetch]);
-  
   const isLoading = isAuthLoading || isAppUserLoading;
   
   if (isLoading) {
