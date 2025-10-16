@@ -9,13 +9,6 @@ export const users: User[] = [
   { id: 'user-5', name: 'Dr. Eve Miller', email: 'eve@example.com', role: 'teacher' },
 ];
 
-export const enrollments: Enrollment[] = [
-  { id: 'enroll-1', studentId: 'user-1', courseId: 'course-1', enrollmentDate: new Date('2023-09-01') },
-  { id: 'enroll-2', studentId: 'user-1', courseId: 'course-3', enrollmentDate: new Date('2023-09-05') },
-  { id: 'enroll-3', studentId: 'user-2', courseId: 'course-1', enrollmentDate: new Date('2023-09-02') },
-  { id: 'enroll-4', studentId: 'user-4', courseId: 'course-4', enrollmentDate: new Date('2023-09-10') },
-];
-
 export const assignments: Assignment[] = [
   {
     id: 'assign-1',
@@ -72,20 +65,19 @@ export const getTeacherById = (id: string) => users.find(u => u.id === id && u.r
 export const getStudentById = (id: string) => users.find(u => u.id === id && u.role === 'student');
 export const getAssignmentsByCourse = (courseId: string) => assignments.filter(a => a.courseId === courseId);
 export const getSubmissionsForAssignment = (assignmentId: string) => submissions.filter(s => s.assignmentId === assignmentId);
-export const getEnrollmentsByStudent = (studentId: string) => enrollments.filter(e => e.studentId === studentId);
 
-export const getStudentCourses = (studentId: string, allCourses: Course[]) => {
-  const studentEnrollments = getEnrollmentsByStudent(studentId);
-  if (!allCourses) return [];
+export const getStudentCourses = (studentId: string, enrollments: Enrollment[], allCourses: Course[]) => {
+  if (!allCourses || !enrollments) return [];
+  const studentEnrollments = enrollments.filter(e => e.studentId === studentId);
   return allCourses.filter(course => studentEnrollments.some(e => e.courseId === course.id));
 };
 
-export const getCourseById = (id: string, allCourses: Course[]) => {
+export const getCourseById = (id: string, allCourses: Course[] | null) => {
   if (!allCourses) return undefined;
   return allCourses.find(c => c.id === id);
 }
 
-export const getEnrollmentsByCourse = (courseId: string, allEnrollments: Enrollment[]) => {
+export const getEnrollmentsByCourse = (courseId: string, allEnrollments: Enrollment[] | null) => {
   if (!allEnrollments) return [];
   return allEnrollments.filter(e => e.courseId === courseId);
 };

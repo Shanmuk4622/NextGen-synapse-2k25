@@ -1,16 +1,17 @@
+
 "use client";
 
 import Link from 'next/link';
 import { BookOpen, CheckCircle, Clock } from 'lucide-react';
 import { PersonalizedLearning } from '@/components/dashboard/PersonalizedLearning';
-import { getStudentCourses, getTeacherById } from '@/lib/data';
+import { getTeacherById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { useEffect, useState } from 'react';
-import type { User as AppUser, Course } from '@/lib/types';
-import { doc, getDoc, collection } from 'firebase/firestore';
+import type { User as AppUser, Course, Enrollment } from '@/lib/types';
+import { doc, getDoc, collection, query, where } from 'firebase/firestore';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -21,13 +22,6 @@ export default function DashboardPage() {
     () => (user && firestore ? doc(firestore, 'users', user.uid) : null),
     [user, firestore]
   );
-
-  const coursesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'courses');
-  }, [firestore]);
-
-  const { data: allCourses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
 
   useEffect(() => {
     if (userDocRef) {
@@ -40,8 +34,27 @@ export default function DashboardPage() {
       setAppUser(null);
     }
   }, [userDocRef]);
-  
-  if (isUserLoading || (user && !appUser) || coursesLoading) {
+
+  const enrollmentsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'enrollments'), where('studentId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+
+  const courseIds = useMemoFirebase(() => {
+    if (!enrollments) return [];
+    return enrollments.map(e => e.courseId);
+  }, [enrollments]);
+
+  const coursesQuery = useMemoFirebase(() => {
+    if (!firestore || !courseIds || courseIds.length === 0) return null;
+    return query(collection(firestore, 'courses'), where('id', 'in', courseIds));
+  }, [firestore, courseIds]);
+
+  const { data: enrolledCourses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
+
+  if (isUserLoading || (user && !appUser) || coursesLoading || enrollmentsLoading) {
     return <div>Loading...</div>;
   }
   
@@ -57,8 +70,6 @@ export default function DashboardPage() {
     );
   }
 
-  const enrolledCourses = getStudentCourses(appUser.id, allCourses || []);
-
   return (
     <div className="container py-8 md:py-12">
       <div className="mb-8">
@@ -70,7 +81,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-8">
           <section>
             <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
-            {enrolledCourses.length > 0 ? (
+            {enrolledCourses && enrolledCourses.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {enrolledCourses.map(course => {
                   const teacher = getTeacherById(course.teacherId);
