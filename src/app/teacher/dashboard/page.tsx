@@ -35,7 +35,7 @@ export default function TeacherDashboardPage() {
   const enrollmentsQuery = useMemoFirebase(() => {
     // This is the critical fix: If there are no courseIds, we must return null.
     // An empty `in` query is invalid in Firestore and was causing the permission error.
-    if (!firestore || !courseIds || courseIds.length === 0) return null;
+    if (!firestore || courseIds.length === 0) return null;
     
     return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
   }, [firestore, courseIds]);
@@ -87,7 +87,7 @@ export default function TeacherDashboardPage() {
 
       <section>
         <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
-        {(coursesLoading || enrollmentsLoading) && <p>Loading courses...</p>}
+        {(coursesLoading || (courseIds.length > 0 && enrollmentsLoading)) && <p>Loading courses...</p>}
         {teacherCourses && teacherCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {teacherCourses.map(course => {
@@ -114,7 +114,7 @@ export default function TeacherDashboardPage() {
             })}
           </div>
         ) : (
-          !(coursesLoading || enrollmentsLoading) && <div className="text-center py-12 border-2 border-dashed rounded-lg">
+          !(coursesLoading) && <div className="text-center py-12 border-2 border-dashed rounded-lg">
             <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">You haven't created any courses</h3>
             <p className="mt-2 text-sm text-muted-foreground">Get started by creating your first course.</p>
