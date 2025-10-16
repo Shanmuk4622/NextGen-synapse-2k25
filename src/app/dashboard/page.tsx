@@ -4,14 +4,14 @@
 import Link from 'next/link';
 import { BookOpen, CheckCircle, Clock } from 'lucide-react';
 import { PersonalizedLearning } from '@/components/dashboard/PersonalizedLearning';
-import { getTeacherById } from '@/lib/data';
+import { getTeacherById, getAssignmentsByCourse, getCourseById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { useEffect, useState, useMemo } from 'react';
-import type { User as AppUser, Course, Enrollment } from '@/lib/types';
-import { doc, getDoc, collection, query, where, documentId } from 'firebase/firestore';
+import type { User as AppUser, Course, Enrollment, Submission, Assignment } from '@/lib/types';
+import { doc, getDoc, collection, query, where, documentId, collectionGroup } from 'firebase/firestore';
 
 // NEW, DEDICATED COMPONENT FOR FETCHING AND DISPLAYING ENROLLED COURSES
 function EnrolledCourses({ appUser }: { appUser: AppUser }) {
@@ -87,6 +87,79 @@ function EnrolledCourses({ appUser }: { appUser: AppUser }) {
 }
 
 
+function RecentActivity({ appUser }: { appUser: AppUser }) {
+  const firestore = useFirestore();
+
+  const submissionsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+      collection(firestore, `users/${appUser.id}/submissions`)
+    );
+  }, [firestore, appUser.id]);
+  const { data: submissions, isLoading: areSubmissionsLoading } = useCollection<Submission>(submissionsQuery);
+
+  const courseIds = useMemo(() => {
+      if (!submissions) return [];
+      // This gets unique courseIds from submissions
+      return [...new Set(submissions.map(s => s.courseId))];
+  }, [submissions]);
+
+  const coursesQuery = useMemoFirebase(() => {
+    if (!firestore || courseIds.length === 0) return null;
+    return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds));
+  }, [firestore, courseIds]);
+  const { data: courses, isLoading: areCoursesLoading } = useCollection<Course>(coursesQuery);
+  
+  const assignmentsQuery = useMemoFirebase(() => {
+      if (!firestore || courseIds.length === 0) return null;
+      return query(collectionGroup(firestore, 'assignments'), where('courseId', 'in', courseIds));
+  }, [firestore, courseIds]);
+  const { data: assignments, isLoading: areAssignmentsLoading } = useCollection<Assignment>(assignmentsQuery);
+
+  const isLoading = areSubmissionsLoading || areCoursesLoading || areAssignmentsLoading;
+
+  if (isLoading) {
+    return <p>Loading recent activity...</p>;
+  }
+
+  if (!submissions || submissions.length === 0) {
+    return <p>No recent activity to display.</p>;
+  }
+  
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <ul className="space-y-4">
+          {submissions.map(submission => {
+            const assignment = assignments?.find(a => a.id === submission.assignmentId);
+            const course = courses?.find(c => c.id === assignment?.courseId);
+
+            if (!assignment || !course) return null;
+
+            return (
+              <li key={submission.id} className="flex items-start gap-4">
+                <CheckCircle className="h-5 w-5 text-green-500 mt-1" />
+                <div>
+                  <p className="font-medium">
+                    {submission.grade ?
+                      `Assignment "${assignment.title}" graded: ${submission.grade}%` :
+                      `Assignment "${assignment.title}" submitted`
+                    }
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    In "{course.title}" on {new Date(submission.submissionDate).toLocaleDateString()}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 export default function DashboardPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
@@ -150,26 +223,7 @@ export default function DashboardPage() {
 
           <section>
             <h2 className="font-headline text-2xl font-semibold mb-4">Recent Activity</h2>
-             <Card>
-              <CardContent className="pt-6">
-                <ul className="space-y-4">
-                  <li className="flex items-start gap-4">
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-1" />
-                    <div>
-                      <p className="font-medium">Assignment "HTML & CSS Basics" graded: 92%</p>
-                      <p className="text-sm text-muted-foreground">In "Introduction to Web Development"</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-4">
-                    <Clock className="h-5 w-5 text-yellow-500 mt-1" />
-                    <div>
-                      <p className="font-medium">New assignment "JavaScript Fundamentals" posted</p>
-                       <p className="text-sm text-muted-foreground">Due in 5 days in "Introduction to Web Development"</p>
-                    </div>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+            {appUser && <RecentActivity appUser={appUser} />}
           </section>
         </div>
 

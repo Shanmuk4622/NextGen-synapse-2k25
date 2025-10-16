@@ -37,7 +37,8 @@ export type Submission = {
   id: string;
   assignmentId: string;
   studentId: string;
-  submissionDate: Date;
+  courseId: string; // denormalized
+  submissionDate: any; // Can be a server timestamp
   content: string; // Could be a URL to a file or text content
   grade: number | null; // e.g., 85
 };

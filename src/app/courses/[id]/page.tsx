@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, UserCircle, BookOpen, FileText, CheckCircle } from "lucide-react";
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { doc, collection, query, where, addDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
-import type { Course, Enrollment } from '@/lib/types';
+import type { Course, Enrollment, Submission } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 import React, { useEffect, useState } from "react";
@@ -37,6 +37,12 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   }, [firestore, id, user?.uid]);
 
   const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+
+   const submissionsQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid || !id) return null;
+    return query(collection(firestore, `users/${user.uid}/submissions`), where('courseId', '==', id));
+  }, [firestore, id, user?.uid]);
+  const { data: submissions, isLoading: areSubmissionsLoading } = useCollection<Submission>(submissionsQuery);
 
   useEffect(() => {
     setIsEnrolled(userEnrollment != null && userEnrollment.length > 0);
@@ -84,7 +90,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     }
   };
 
-  if (isCourseLoading || areEnrollmentsLoading) {
+  if (isCourseLoading || areEnrollmentsLoading || areSubmissionsLoading) {
       return <div>Loading...</div>;
   }
   
@@ -95,6 +101,10 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const teacher = getTeacherById(course.teacherId);
   const placeholder = PlaceHolderImages.find(p => p.id === course.imageId);
   const assignments = getAssignmentsByCourse(course.id);
+
+  const getSubmissionStatus = (assignmentId: string) => {
+    return submissions?.some(s => s.assignmentId === assignmentId);
+  }
 
   return (
     <div className="bg-card">
@@ -148,24 +158,27 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
               </h2>
               {isEnrolled ? (
                  <div className="space-y-4">
-                  {assignments.map(assignment => (
-                    <Card key={assignment.id} className="hover:bg-background/80 transition-colors">
-                      <CardContent className="p-4 flex items-center justify-between">
-                        <div className="flex items-start gap-4">
-                           <FileText className="h-5 w-5 mt-1 text-primary" />
-                          <div>
-                            <h3 className="font-semibold">{assignment.title}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{assignment.description}</p>
-                             <p className="text-xs text-muted-foreground mt-1">Due: {assignment.dueDate.toLocaleDateString()}</p>
+                  {assignments.map(assignment => {
+                    const isSubmitted = getSubmissionStatus(assignment.id);
+                    return (
+                      <Card key={assignment.id} className="hover:bg-background/80 transition-colors">
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div className="flex items-start gap-4">
+                             <FileText className="h-5 w-5 mt-1 text-primary" />
+                            <div>
+                              <h3 className="font-semibold">{assignment.title}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{assignment.description}</p>
+                               <p className="text-xs text-muted-foreground mt-1">Due: {assignment.dueDate.toLocaleDateString()}</p>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <Badge variant={Math.random() > 0.5 ? "default" : "secondary"}>{Math.random() > 0.5 ? "Submitted" : "Not Submitted"}</Badge>
-                          <Button size="sm" variant="outline">View</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          <div className="flex flex-col items-end gap-2">
+                            <Badge variant={isSubmitted ? "default" : "secondary"}>{isSubmitted ? "Submitted" : "Not Submitted"}</Badge>
+                            <Button size="sm" variant="outline">View</Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                  </div>
               ) : (
                 <div className="text-center py-12 border-2 border-dashed rounded-lg">

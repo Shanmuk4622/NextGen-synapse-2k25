@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -11,23 +12,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
-import { useState } from "react";
-import { useUser, useAuth } from "@/firebase";
+import { useState, useEffect } from "react";
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import type { User as AppUser } from "@/lib/types";
+import { doc } from 'firebase/firestore';
 
-const navLinks = [
-  { href: "/#courses", label: "Courses" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/teacher/dashboard", label: "Teacher" },
-];
 
 export function Header() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+
+  const { data: appUser } = useDoc<AppUser>(userDocRef);
+
+  const navLinks = [
+    { href: "/#courses", label: "Courses" },
+    { href: "/dashboard", label: "Dashboard", roles: ['student', 'teacher'] },
+    { href: "/teacher/dashboard", label: "Teacher", roles: ['teacher'] },
+  ];
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -35,7 +47,9 @@ export function Header() {
   };
 
   const renderNavLinks = (isMobile: boolean) =>
-    navLinks.map((link) => (
+    navLinks
+      .filter(link => !link.roles || (appUser && link.roles.includes(appUser.role)))
+      .map((link) => (
       <Link
         key={link.href}
         href={link.href}
@@ -71,10 +85,11 @@ export function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                  <DropdownMenuItem disabled>
-                  <p className="font-medium">{user.displayName || user.email}</p>
+                  <p className="font-medium">{appUser?.name || user.email}</p>
                  </DropdownMenuItem>
                  <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push('/dashboard')}>Dashboard</DropdownMenuItem>
+                {appUser?.role === 'teacher' && <DropdownMenuItem onClick={() => router.push('/teacher/dashboard')}>Teacher Dashboard</DropdownMenuItem>}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
