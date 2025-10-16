@@ -37,6 +37,7 @@ export default function DashboardPage() {
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
+    // Securely query only the current user's enrollments subcollection
     return query(collection(firestore, `users/${user.uid}/enrollments`));
   }, [firestore, user?.uid]);
 
@@ -48,7 +49,8 @@ export default function DashboardPage() {
   }, [enrollments]);
 
   const coursesQuery = useMemoFirebase(() => {
-    if (!firestore || !courseIds || courseIds.length === 0) return null;
+    if (!firestore || courseIds.length === 0) return null;
+    // Fetch details for the enrolled courses
     return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds));
   }, [firestore, courseIds]);
 

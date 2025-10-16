@@ -18,7 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 import React, { useEffect, useState } from "react";
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
-  const { id } = React.use(params);
+  const id = React.use(params.id);
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -33,9 +33,10 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, 'enrollments'), where('courseId', '==', id), where('studentId', '==', user.uid));
+    // Query within the specific user's enrollments subcollection
+    return query(collection(firestore, `users/${user.uid}/enrollments`), where('courseId', '==', id));
   }, [firestore, id, user]);
-  
+
   const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   useEffect(() => {
@@ -54,7 +55,8 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     }
 
     try {
-      const enrollmentsCollection = collection(firestore, 'enrollments');
+      // Add the enrollment to the user's subcollection
+      const enrollmentsCollection = collection(firestore, `users/${user.uid}/enrollments`);
       await addDoc(enrollmentsCollection, {
         id: uuidv4(),
         studentId: user.uid,
@@ -193,7 +195,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                 ) : (
                   <>
                     <p className="text-muted-foreground mb-4">Enroll now to get full access to the course content and assignments.</p>
-                    <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" onClick={handleEnroll}>Enroll in Course</Button>
+                    <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" onClick={handleEnroll} disabled={!user}>Enroll in Course</Button>
                   </>
                 )}
               </CardContent>

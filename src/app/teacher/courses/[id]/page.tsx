@@ -20,12 +20,12 @@ import {
 import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from "@/firebase";
 import React, { useEffect, useState } from "react";
 import type { User as AppUser, Course, Enrollment } from "@/lib/types";
-import { doc, getDoc, collection, query, where } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, collectionGroup } from "firebase/firestore";
 import Link from "next/link";
 
 
 export default function TeacherCoursePage({ params }: { params: { id: string } }) {
-  const { id } = React.use(params);
+  const id = React.use(params.id);
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [appUser, setAppUser] = useState<AppUser | null>(null);
@@ -43,7 +43,8 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'enrollments'), where('courseId', '==', id));
+    // Use a collection group query to find all enrollments for this course
+    return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', id));
   }, [firestore, id]);
   
   const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
@@ -163,7 +164,8 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
                             <span className="font-medium">{student!.name}</span>
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground text-sm">
-                            {enrollment?.enrollmentDate.toLocaleDateString()}
+                            {/* @ts-ignore */}
+                            {enrollment?.enrollmentDate?.toDate().toLocaleDateString()}
                           </TableCell>
                         </TableRow>
                       )
