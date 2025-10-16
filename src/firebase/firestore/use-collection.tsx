@@ -12,7 +12,6 @@ import type {
 import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useUser } from '@/firebase/provider';
 
 export type WithId<T> = T & { id: string };
 
@@ -33,18 +32,17 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query.
- * It now internally checks for auth loading state before creating a subscription.
+ * Assumes that it is rendered within a context where auth is already resolved.
  */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
 ): UseCollectionResult<T> {
   const [data, setData] = useState<WithId<T>[] | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const { isAuthLoading } = useUser();
 
   useEffect(() => {
-    // If the query isn't ready OR if auth is still loading, do nothing and cleanup.
-    if (!memoizedTargetRefOrQuery || isAuthLoading) {
+    // If the query isn't ready, do nothing.
+    if (!memoizedTargetRefOrQuery) {
       setData(null);
       setError(null);
       return;
@@ -55,7 +53,7 @@ export function useCollection<T = any>(
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: WithId<T>[] = snapshot.docs.map(doc => ({ ...(doc.data() as T), id: doc.id }));
         setData(results);
-        setError(null); // Clear any previous error.
+        setError(null);
       },
       (error: FirestoreError) => {
         const path: string =
@@ -70,21 +68,19 @@ export function useCollection<T = any>(
 
         setError(contextualError);
         setData(null);
-        // Propagate the error for global handling.
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
-    // Cleanup subscription on unmount or if the query changes.
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, isAuthLoading]);
+  }, [memoizedTargetRefOrQuery]);
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // isLoading is true if auth is loading, or if a query is provided but we don't have data or an error yet.
-  const isLoading = isAuthLoading || (!!memoizedTargetRefOrQuery && data === null && error === null);
+  // isLoading is true only if a query is provided but we don't have data or an error yet.
+  const isLoading = !!memoizedTargetRefOrQuery && data === null && error === null;
   
   return { data, isLoading, error };
 }

@@ -18,13 +18,12 @@ export interface FirebaseContextState {
 // This is the shape of the user-specific hook.
 export interface UserHookResult {
   user: User | null;
-  isAuthLoading: boolean;
+  isAuthLoading: boolean; // This remains to signal the initial auth check
 }
 
-// The actual React Context. It's undefined by default.
+// The actual React Contexts.
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 const UserContext = createContext<UserHookResult | undefined>(undefined);
-
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -40,20 +39,18 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   auth,
 }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true); // Start as true
+  const [isAuthLoading, setIsAuthLoading] = useState(true); // Always starts true
 
   useEffect(() => {
-    // onAuthStateChanged returns an unsubscribe function
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      setIsAuthLoading(false); // Set to false once the check is complete
+      setIsAuthLoading(false); // Auth check is complete
     }, (error) => {
       console.error("FirebaseProvider: onAuthStateChanged error:", error);
       setUser(null);
-      setIsAuthLoading(false); // Also set to false on error
+      setIsAuthLoading(false); // Auth check is complete, even on error
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [auth]);
 
@@ -67,6 +64,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     user,
     isAuthLoading,
   }), [user, isAuthLoading]);
+
+  // THE AUTHENTICATION GATE:
+  // Do not render children until the initial authentication check is complete.
+  // This prevents any child component from rendering and attempting to fetch
+  // data before we know the user's authentication status.
+  if (isAuthLoading) {
+    return null; 
+  }
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -93,9 +98,6 @@ export const useAuth = (): Auth => useFirebase().auth;
 export const useFirestore = (): Firestore => useFirebase().firestore;
 export const useFirebaseApp = (): FirebaseApp => useFirebase().firebaseApp;
 
-/**
- * Hook specifically for accessing the authenticated user's state.
- */
 export const useUser = (): UserHookResult => {
   const context = useContext(UserContext);
   if (context === undefined) {
@@ -104,7 +106,6 @@ export const useUser = (): UserHookResult => {
   return context;
 };
 
-// useMemoFirebase remains unchanged.
 type MemoFirebase <T> = T & {__memo?: boolean};
 export function useMemoFirebase<T>(factory: () => T, deps: React.DependencyList): T | (MemoFirebase<T>) {
   const memoized = useMemo(factory, deps);
