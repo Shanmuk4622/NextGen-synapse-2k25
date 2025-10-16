@@ -11,6 +11,7 @@ import type {
 import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useUser } from '../provider';
 
 export type WithId<T> = T & { id: string };
 
@@ -22,17 +23,18 @@ export interface UseDocResult<T> {
 
 /**
  * React hook to subscribe to a single Firestore document.
- * Assumes that it is rendered within a context where auth is already resolved.
  */
 export function useDoc<T = any>(
   memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined,
 ): UseDocResult<T> {
   const [data, setData] = useState<WithId<T> | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const { isAuthLoading } = useUser(); // Depend on the auth loading state
 
   useEffect(() => {
-    // If the doc ref isn't ready, do nothing.
-    if (!memoizedDocRef) {
+    // If the doc ref isn't ready OR if auth is still loading, do nothing.
+    // This is the critical guard to prevent premature fetches.
+    if (!memoizedDocRef || isAuthLoading) {
       setData(null);
       setError(null);
       return;
@@ -61,14 +63,14 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef]);
+  }, [memoizedDocRef, isAuthLoading]); // Re-run effect when auth state changes
 
   if(memoizedDocRef && !memoizedDocRef.__memo) {
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // isLoading is true only if a docRef is provided but we don't have data or an error yet.
-  const isLoading = !!memoizedDocRef && data === null && error === null;
+  // isLoading is true if auth is loading, or if a docRef is provided but we don't have data/error yet.
+  const isLoading = isAuthLoading || (!!memoizedDocRef && data === null && error === null);
   
   return { data, isLoading, error };
 }

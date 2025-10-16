@@ -12,6 +12,7 @@ import type {
 import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useUser } from '../provider';
 
 export type WithId<T> = T & { id: string };
 
@@ -32,17 +33,18 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query.
- * Assumes that it is rendered within a context where auth is already resolved.
  */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
 ): UseCollectionResult<T> {
   const [data, setData] = useState<WithId<T>[] | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const { isAuthLoading } = useUser(); // Depend on the auth loading state
 
   useEffect(() => {
-    // If the query isn't ready, do nothing.
-    if (!memoizedTargetRefOrQuery) {
+    // If the query isn't ready OR if auth is still loading, do nothing.
+    // This is the critical guard to prevent premature fetches.
+    if (!memoizedTargetRefOrQuery || isAuthLoading) {
       setData(null);
       setError(null);
       return;
@@ -73,14 +75,14 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]);
+  }, [memoizedTargetRefOrQuery, isAuthLoading]); // Re-run effect when auth state changes
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // isLoading is true only if a query is provided but we don't have data or an error yet.
-  const isLoading = !!memoizedTargetRefOrQuery && data === null && error === null;
+  // isLoading is true if auth is loading, or if a query is provided but we don't have data/error yet.
+  const isLoading = isAuthLoading || (!!memoizedTargetRefOrQuery && data === null && error === null);
   
   return { data, isLoading, error };
 }
