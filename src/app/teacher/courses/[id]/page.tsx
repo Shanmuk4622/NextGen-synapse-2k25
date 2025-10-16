@@ -25,7 +25,7 @@ import Link from "next/link";
 
 
 export default function TeacherCoursePage({ params }: { params: { id: string } }) {
-  const id = React.use(params.id);
+  const id = React.use(params).id;
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [appUser, setAppUser] = useState<AppUser | null>(null);

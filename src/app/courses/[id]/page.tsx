@@ -18,7 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 import React, { useEffect, useState } from "react";
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
-  const id = React.use(params.id);
+  const id = React.use(params).id;
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
