@@ -11,7 +11,7 @@ import type {
 import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useUser } from '../provider';
+import { useUser } from '@/firebase/provider';
 
 export type WithId<T> = T & { id: string };
 
@@ -32,21 +32,15 @@ export function useDoc<T = any>(
 ): UseDocResult<T> {
   const [data, setData] = useState<WithId<T> | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const { isAuthLoading } = useUser();
 
   useEffect(() => {
-    // If the docRef isn't ready OR we are still waiting for the initial auth
-    // check, then we are in a loading state. Reset and wait.
-    if (!memoizedDocRef || isAuthLoading) {
-      setIsLoading(true);
+    // If auth is still loading or the ref isn't ready, do nothing.
+    if (isAuthLoading || !memoizedDocRef) {
       setData(null);
       setError(null);
       return;
     }
-
-    // A valid reference is provided and auth is resolved. Start loading.
-    setIsLoading(true);
 
     const unsubscribe = onSnapshot(
       memoizedDocRef,
@@ -57,7 +51,6 @@ export function useDoc<T = any>(
           setData(null);
         }
         setError(null);
-        setIsLoading(false);
       },
       (error: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
@@ -67,8 +60,6 @@ export function useDoc<T = any>(
 
         setError(contextualError);
         setData(null);
-        setIsLoading(false);
-
         errorEmitter.emit('permission-error', contextualError);
       }
     );
@@ -80,6 +71,8 @@ export function useDoc<T = any>(
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // The hook is loading if the query is being prepared OR if the initial auth check is running.
-  return { data, isLoading: isLoading || isAuthLoading, error };
+  // The hook is loading if auth is loading OR if there's a ref but no data/error yet.
+  const isLoading = isAuthLoading || (!!memoizedDocRef && data === null && error === null);
+  
+  return { data, isLoading, error };
 }

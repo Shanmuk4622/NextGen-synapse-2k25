@@ -45,19 +45,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      if (isAuthLoading) {
-        setIsAuthLoading(false);
-      }
+      setIsAuthLoading(false);
     }, (error) => {
       console.error("FirebaseProvider: onAuthStateChanged error:", error);
       setUser(null);
-      if (isAuthLoading) {
-        setIsAuthLoading(false);
-      }
+      setIsAuthLoading(false);
     });
 
     return () => unsubscribe();
-  }, [auth, isAuthLoading]);
+  }, [auth]);
 
   const contextValue = useMemo((): FirebaseContextState => ({
     firebaseApp,
@@ -70,6 +66,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     isAuthLoading,
   }), [user, isAuthLoading]);
 
+  // The provider no longer needs to gate its children, as the hooks are now safe.
   return (
     <FirebaseContext.Provider value={contextValue}>
       <UserContext.Provider value={userContextValue}>
