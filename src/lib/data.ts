@@ -1,3 +1,4 @@
+
 import type { User, Course, Enrollment, Assignment, Submission } from './types';
 
 export const users: User[] = [
@@ -71,12 +72,13 @@ export const submissions: Submission[] = [
 // Helper functions to query mock data
 export const getTeacherById = (id: string) => users.find(u => u.id === id && u.role === 'teacher');
 export const getStudentById = (id: string) => users.find(u => u.id === id && u.role === 'student');
-export const getCourseById = (id: string, allCourses: Course[]) => allCourses.find(c => c.id === id);
+export const getCourseById = (id: string) => courses.find(c => c.id === id);
 export const getAssignmentsByCourse = (courseId: string) => assignments.filter(a => a.courseId === courseId);
 export const getSubmissionsForAssignment = (assignmentId: string) => submissions.filter(s => s.assignmentId === assignmentId);
 export const getEnrollmentsByStudent = (studentId: string) => enrollments.filter(e => e.studentId === studentId);
 export const getEnrollmentsByCourse = (courseId: string) => enrollments.filter(e => e.courseId === courseId);
-export const getStudentCourses = (studentId: string, allCourses: Course[]) => {
+export const getStudentCourses = (studentId: string) => {
   const studentEnrollments = getEnrollmentsByStudent(studentId);
-  return allCourses.filter(course => studentEnrollments.some(e => e.courseId === course.id));
+  return courses.filter(course => studentEnrollments.some(e => e.courseId === course.id));
 };
+

@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { CourseCard } from '@/components/course/CourseCard';
@@ -57,7 +58,7 @@ export default function Home() {
             </p>
           </div>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {courses.map(course => (
+            {courses.map((course: any) => (
               <CourseCard key={course.id} course={course} />
             ))}
           </div>
