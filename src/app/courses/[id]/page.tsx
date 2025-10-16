@@ -15,10 +15,10 @@ import { doc, collection, query, where, addDoc, serverTimestamp, updateDoc, incr
 import type { Course, Enrollment } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = React.use(params);
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();

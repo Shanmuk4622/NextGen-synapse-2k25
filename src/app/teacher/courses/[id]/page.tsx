@@ -18,14 +18,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from "@/firebase";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { User as AppUser, Course, Enrollment } from "@/lib/types";
 import { doc, getDoc, collection, query, where } from "firebase/firestore";
 import Link from "next/link";
 
 
 export default function TeacherCoursePage({ params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = React.use(params);
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [appUser, setAppUser] = useState<AppUser | null>(null);
