@@ -11,6 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle } from "lucide-react";
+import { useUser, useFirestore, addDocumentNonBlocking } from "@/firebase";
+import { collection, serverTimestamp } from "firebase/firestore";
+import { v4 as uuidv4 } from "uuid";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 const courseFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters." }),
@@ -21,6 +25,8 @@ const courseFormSchema = z.object({
 export default function CreateCoursePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof courseFormSchema>>({
     resolver: zodResolver(courseFormSchema),
@@ -31,8 +37,33 @@ export default function CreateCoursePage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof courseFormSchema>) {
-    console.log("New Course Data:", values);
+  async function onSubmit(values: z.infer<typeof courseFormSchema>) {
+    if (!user || !firestore) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to create a course.",
+      });
+      return;
+    }
+
+    const courseId = uuidv4();
+    const coursesCollectionRef = collection(firestore, "courses");
+    const placeholderImages = PlaceHolderImages.filter(p => p.id.startsWith("course-"));
+    const randomImage = placeholderImages[Math.floor(Math.random() * placeholderImages.length)];
+    
+    const newCourse = {
+      id: courseId,
+      ...values,
+      teacherId: user.uid,
+      imageId: randomImage.id,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    // We are not awaiting this, so the UI can update immediately
+    addDocumentNonBlocking(collection(firestore, 'courses'), newCourse);
+
     toast({
       title: "Course Created!",
       description: `The course "${values.title}" has been successfully created.`,
@@ -99,7 +130,9 @@ export default function CreateCoursePage() {
               />
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                <Button type="submit">Create Course</Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? "Creating..." : "Create Course"}
+                </Button>
               </div>
             </form>
           </Form>

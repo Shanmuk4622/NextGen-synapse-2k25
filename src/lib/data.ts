@@ -8,40 +8,7 @@ export const users: User[] = [
   { id: 'user-5', name: 'Dr. Eve Miller', email: 'eve@example.com', role: 'teacher' },
 ];
 
-export const courses: Course[] = [
-  {
-    id: 'course-1',
-    title: 'Introduction to Web Development',
-    description: 'Learn the fundamentals of HTML, CSS, and JavaScript to build modern websites. This course covers everything from basic syntax to responsive design.',
-    duration: '10 weeks',
-    teacherId: 'user-3',
-    imageId: 'course-web-dev',
-  },
-  {
-    id: 'course-2',
-    title: 'Advanced React Patterns',
-    description: 'Dive deep into React and learn advanced patterns for building scalable and maintainable applications. Topics include hooks, state management, and performance optimization.',
-    duration: '8 weeks',
-    teacherId: 'user-3',
-    imageId: 'course-react',
-  },
-  {
-    id: 'course-3',
-    title: 'Data Science with Python',
-    description: 'Explore the world of data science using Python. You will learn to work with libraries like Pandas, NumPy, and Scikit-learn to analyze and visualize data.',
-    duration: '12 weeks',
-    teacherId: 'user-5',
-    imageId: 'course-data-science',
-  },
-  {
-    id: 'course-4',
-    title: 'UI/UX Design Principles',
-    description: 'Master the principles of user interface and user experience design. This course focuses on creating intuitive, accessible, and beautiful digital products.',
-    duration: '6 weeks',
-    teacherId: 'user-5',
-    imageId: 'course-ui-ux',
-  },
-];
+export const courses: Course[] = [];
 
 export const enrollments: Enrollment[] = [
   { id: 'enroll-1', studentId: 'user-1', courseId: 'course-1', enrollmentDate: new Date('2023-09-01') },
@@ -104,12 +71,12 @@ export const submissions: Submission[] = [
 // Helper functions to query mock data
 export const getTeacherById = (id: string) => users.find(u => u.id === id && u.role === 'teacher');
 export const getStudentById = (id: string) => users.find(u => u.id === id && u.role === 'student');
-export const getCourseById = (id: string) => courses.find(c => c.id === id);
+export const getCourseById = (id: string, allCourses: Course[]) => allCourses.find(c => c.id === id);
 export const getAssignmentsByCourse = (courseId: string) => assignments.filter(a => a.courseId === courseId);
 export const getSubmissionsForAssignment = (assignmentId: string) => submissions.filter(s => s.assignmentId === assignmentId);
 export const getEnrollmentsByStudent = (studentId: string) => enrollments.filter(e => e.studentId === studentId);
 export const getEnrollmentsByCourse = (courseId: string) => enrollments.filter(e => e.courseId === courseId);
-export const getStudentCourses = (studentId: string) => {
+export const getStudentCourses = (studentId: string, allCourses: Course[]) => {
   const studentEnrollments = getEnrollmentsByStudent(studentId);
-  return courses.filter(course => studentEnrollments.some(e => e.courseId === course.id));
+  return allCourses.filter(course => studentEnrollments.some(e => e.courseId === course.id));
 };

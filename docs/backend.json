@@ -56,14 +56,18 @@
         "teacherId": {
           "type": "string",
           "description": "Reference to the User (Teacher) who created the course. (Relationship: User 1:N Course)"
+        },
+        "imageId": {
+          "type": "string",
+          "description": "Reference to the placeholder image for the course."
         }
       },
       "required": [
-        "id",
         "title",
         "description",
         "duration",
-        "teacherId"
+        "teacherId",
+        "imageId"
       ]
     },
     "Enrollment": {
