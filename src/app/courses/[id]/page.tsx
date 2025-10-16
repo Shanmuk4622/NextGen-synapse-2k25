@@ -11,28 +11,37 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Clock, UserCircle, BookOpen, FileText, CheckCircle } from "lucide-react";
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
-import { doc, collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where, addDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
 import type { Course, Enrollment } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
+import { useEffect, useState } from "react";
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const [isEnrolled, setIsEnrolled] = useState(false);
+
 
   const courseRef = useMemoFirebase(() => {
     if (!firestore) return null;
-    return doc(firestore, 'courses', params.id);
-  }, [firestore, params.id]);
+    return doc(firestore, 'courses', id);
+  }, [firestore, id]);
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, 'enrollments'), where('courseId', '==', params.id), where('studentId', '==', user.uid));
-  }, [firestore, params.id, user]);
+    return query(collection(firestore, 'enrollments'), where('courseId', '==', id), where('studentId', '==', user.uid));
+  }, [firestore, id, user]);
   
   const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+
+  useEffect(() => {
+    setIsEnrolled(userEnrollment != null && userEnrollment.length > 0);
+  }, [userEnrollment]);
+
 
   const handleEnroll = async () => {
     if (!user || !firestore || !course) {
@@ -52,14 +61,19 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         courseId: course.id,
         enrollmentDate: serverTimestamp(),
       });
+      
+      const courseDocRef = doc(firestore, "courses", course.id);
+      await updateDoc(courseDocRef, {
+        studentCount: increment(1)
+      });
 
-      // Here you would also update the course's studentCount
-      // For now, we'll just show a success message
 
       toast({
         title: "Enrollment Successful!",
         description: `You have enrolled in "${course.title}".`,
       });
+      setIsEnrolled(true);
+
     } catch (error) {
       console.error("Enrollment error: ", error);
       toast({
@@ -81,7 +95,6 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const teacher = getTeacherById(course.teacherId);
   const placeholder = PlaceHolderImages.find(p => p.id === course.imageId);
   const assignments = getAssignmentsByCourse(course.id);
-  const isEnrolled = userEnrollment && userEnrollment.length > 0;
 
   return (
     <div className="bg-card">
