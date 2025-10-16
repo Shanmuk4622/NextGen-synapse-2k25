@@ -6,7 +6,7 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Clock, UserCircle } from "lucide-react";
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useDoc, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 
 type CourseCardProps = {
@@ -43,25 +43,6 @@ function TeacherProfile({ teacherId }: { teacherId: string }) {
 
 export function CourseCard({ course }: CourseCardProps) {
   const placeholder = PlaceHolderImages.find(p => p.id === course.imageId);
-  const { isUserLoading } = useUser();
-
-  if (isUserLoading) {
-     return (
-       <Card className="h-full flex flex-col transition-all duration-300">
-        <CardHeader className="p-0">
-          <div className="relative h-48 w-full overflow-hidden rounded-t-lg bg-muted animate-pulse" />
-        </CardHeader>
-        <CardContent className="flex-grow p-4 space-y-2">
-            <div className="h-4 bg-muted rounded w-3/4 animate-pulse"></div>
-            <div className="h-4 bg-muted rounded w-1/2 animate-pulse"></div>
-        </CardContent>
-        <CardFooter className="flex justify-between items-center p-4 pt-0 text-sm text-muted-foreground">
-           <div className="h-4 bg-muted rounded w-1/4 animate-pulse"></div>
-           <div className="h-4 bg-muted rounded w-1/4 animate-pulse"></div>
-        </CardFooter>
-      </Card>
-     );
-  }
 
   return (
     <Link href={`/courses/${course.id}`} className="group block">

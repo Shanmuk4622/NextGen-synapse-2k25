@@ -14,7 +14,6 @@ import { doc, getDoc, collection, query, where, documentId } from 'firebase/fire
 
 function EnrolledCourseCard({ courseId }: { courseId: string }) {
   const firestore = useFirestore();
-  const { isUserLoading: isAuthLoading } = useUser();
 
   const courseRef = useMemoFirebase(() => {
     if (!firestore || !courseId) return null;
@@ -24,14 +23,13 @@ function EnrolledCourseCard({ courseId }: { courseId: string }) {
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const teacherRef = useMemoFirebase(() => {
-    // CRITICAL GUARD: Wait for auth and course data
-    if (isAuthLoading || !firestore || !course?.teacherId) return null;
+    if (!firestore || !course?.teacherId) return null;
     return doc(firestore, 'users', course.teacherId);
-  }, [firestore, course?.teacherId, isAuthLoading]);
+  }, [firestore, course?.teacherId]);
 
   const { data: teacher, isLoading: isTeacherLoading } = useDoc<AppUser>(teacherRef);
 
-  const isLoading = isCourseLoading || isTeacherLoading || isAuthLoading;
+  const isLoading = isCourseLoading || isTeacherLoading;
   
   if (isLoading) {
     return (
@@ -122,7 +120,6 @@ export default function DashboardPage() {
   const [isAppUserLoading, setIsAppUserLoading] = useState(true);
 
   useEffect(() => {
-    // CRITICAL GUARD: Wait for auth to resolve before fetching user profile
     if (isAuthLoading || !user || !firestore) {
       if (!isAuthLoading) setIsAppUserLoading(false);
       return;
@@ -172,7 +169,6 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-8">
           <section>
             <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
-            {/* RENDER GUARD: Only render when appUser is loaded */}
             {appUser && <EnrolledCoursesList appUser={appUser} />}
           </section>
 

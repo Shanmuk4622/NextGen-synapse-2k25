@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { PlusCircle, Users, BookOpen, FileText } from "lucide-react";
+import { PlusCircle, Users, BookOpen } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,6 @@ import { doc, getDoc, collection, query, where, collectionGroup } from "firebase
 function StudentRow({ studentId, enrollmentDate }: { studentId: string; enrollmentDate: any }) {
     const firestore = useFirestore();
 
-    // DEFENSIVE CHECK: Only create reference if studentId is valid
     const studentRef = useMemoFirebase(() => {
         if (!firestore || !studentId) return null;
         return doc(firestore, 'users', studentId);
@@ -68,19 +67,15 @@ function StudentRow({ studentId, enrollmentDate }: { studentId: string; enrollme
 
 function EnrolledStudents({ courseId }: { courseId: string }) {
   const firestore = useFirestore();
-  const { isUserLoading: isAuthLoading } = useUser();
 
-  // DEFENSIVE CHECK: Only create query if courseId is valid and auth is resolved
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (isAuthLoading || !firestore || !courseId) return null;
+    if (!firestore || !courseId) return null;
     return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', courseId));
-  }, [firestore, courseId, isAuthLoading]);
+  }, [firestore, courseId]);
 
   const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
-  const isLoading = areEnrollmentsLoading || isAuthLoading;
-
-  if (isLoading) {
+  if (areEnrollmentsLoading) {
     return <p className="text-muted-foreground text-center py-4">Loading students...</p>;
   }
 
@@ -98,7 +93,6 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
         </TableHeader>
         <TableBody>
           {enrollments.map(enrollment => (
-             // RENDER GUARD: Only render if we have a valid enrollment and studentId
              enrollment && enrollment.studentId && <StudentRow key={enrollment.id} studentId={enrollment.studentId} enrollmentDate={enrollment.enrollmentDate} />
           ))}
         </TableBody>
@@ -196,8 +190,7 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
               <CardTitle className="font-headline text-2xl">Enrolled Students</CardTitle>
             </CardHeader>
             <CardContent>
-                {/* RENDER GUARD: Only render when course is loaded and auth is resolved */}
-                {course && id && !isLoading && <EnrolledStudents courseId={id} />}
+                {id && <EnrolledStudents courseId={id} />}
             </CardContent>
           </Card>
         </div>

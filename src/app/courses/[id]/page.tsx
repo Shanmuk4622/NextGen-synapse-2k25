@@ -7,8 +7,7 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Clock, UserCircle, BookOpen, FileText, CheckCircle } from "lucide-react";
+import { Clock, UserCircle, BookOpen, CheckCircle } from "lucide-react";
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { doc, collection, query, where, addDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
 import type { Course, Enrollment, User } from '@/lib/types';
@@ -19,7 +18,6 @@ import React, { useEffect, useState } from "react";
 function TeacherProfile({ teacherId }: { teacherId: string }) {
   const firestore = useFirestore();
   
-  // DEFENSIVE CHECK: Only create a reference if teacherId is valid.
   const teacherRef = useMemoFirebase(() => {
     if (!firestore || !teacherId) return null;
     return doc(firestore, 'users', teacherId);
@@ -41,11 +39,10 @@ function TeacherProfile({ teacherId }: { teacherId: string }) {
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
   const id = React.use(params).id;
-  const { user, isUserLoading: isAuthLoading } = useUser();
+  const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isEnrolled, setIsEnrolled] = useState(false);
-
 
   const courseRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -54,10 +51,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
-    // CRITICAL GUARD: Do not create query until auth is resolved and we have a user.
-    if (isAuthLoading || !firestore || !user?.uid || !id) return null;
+    if (!firestore || !user?.uid || !id) return null;
     return query(collection(firestore, `users/${user.uid}/enrollments`), where('courseId', '==', id));
-  }, [firestore, id, user?.uid, isAuthLoading]);
+  }, [firestore, id, user?.uid]);
 
   const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
@@ -107,7 +103,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     }
   };
 
-  const isLoading = isCourseLoading || areEnrollmentsLoading || isAuthLoading;
+  const isLoading = isCourseLoading || areEnrollmentsLoading;
 
   if (isLoading) {
       return <div>Loading...</div>;
@@ -137,8 +133,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         <div className="container relative z-10 h-full flex flex-col justify-end pb-12">
           <h1 className="font-headline text-4xl md:text-6xl font-bold text-primary-foreground">{course.title}</h1>
           <div className="flex items-center gap-4 mt-4 text-primary-foreground/90">
-            {/* RENDER GUARD: Only render when course data and auth state is ready */}
-            {course.teacherId && !isAuthLoading && <TeacherProfile teacherId={course.teacherId} />}
+            {course.teacherId && <TeacherProfile teacherId={course.teacherId} />}
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
               <span>{course.duration}</span>

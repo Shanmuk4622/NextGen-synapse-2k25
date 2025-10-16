@@ -15,9 +15,8 @@ import { doc, getDoc, collection, query, where } from "firebase/firestore";
 function TeacherCourses({ appUser }: { appUser: AppUser }) {
     const firestore = useFirestore();
 
-    // This query is safe because appUser is guaranteed to exist.
     const teacherCoursesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !appUser?.id) return null;
         return query(collection(firestore, 'courses'), where('teacherId', '==', appUser.id));
     }, [firestore, appUser.id]);
 
