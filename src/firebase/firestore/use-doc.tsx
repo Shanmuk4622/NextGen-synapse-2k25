@@ -24,8 +24,7 @@ export interface UseDocResult<T> {
 /**
  * React hook to subscribe to a single Firestore document.
  *
- * It will correctly handle a `null` or `undefined` docRef, and wait for authentication
- * to be resolved before executing the query.
+ * It will correctly handle a `null` or `undefined` docRef.
  */
 export function useDoc<T = any>(
   memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined,
@@ -35,7 +34,7 @@ export function useDoc<T = any>(
   const { isAuthLoading } = useUser();
 
   useEffect(() => {
-    // If auth is still loading or the ref isn't ready, do nothing.
+    // If the query isn't ready, do nothing.
     if (isAuthLoading || !memoizedDocRef) {
       setData(null);
       setError(null);
@@ -71,8 +70,8 @@ export function useDoc<T = any>(
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // The hook is loading if auth is loading OR if there's a ref but no data/error yet.
-  const isLoading = isAuthLoading || (!!memoizedDocRef && data === null && error === null);
+  // The hook is loading if there's a ref but no data/error yet.
+  const isLoading = (!!memoizedDocRef && data === null && error === null);
   
   return { data, isLoading, error };
 }

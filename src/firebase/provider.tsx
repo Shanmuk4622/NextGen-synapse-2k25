@@ -65,8 +65,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     user,
     isAuthLoading,
   }), [user, isAuthLoading]);
+  
+  if (isAuthLoading) {
+    return null;
+  }
 
-  // The provider no longer needs to gate its children, as the hooks are now safe.
   return (
     <FirebaseContext.Provider value={contextValue}>
       <UserContext.Provider value={userContextValue}>
