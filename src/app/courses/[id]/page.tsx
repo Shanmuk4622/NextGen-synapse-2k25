@@ -3,19 +3,39 @@
 
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { getCourseById, getTeacherById, getAssignmentsByCourse, enrollments } from "@/lib/data";
+import { getTeacherById, getAssignmentsByCourse, getCourseById } from "@/lib/data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Clock, UserCircle, BookOpen, FileText, CheckCircle } from "lucide-react";
-import { useUser } from "@/firebase";
+import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
+import { doc, collection } from 'firebase/firestore';
+import type { Course, Enrollment } from '@/lib/types';
+import { useState } from "react";
 
 export default function CourseDetailPage({ params }: { params: { id: string } }) {
   const { user } = useUser();
-  const course = getCourseById(params.id);
+  const firestore = useFirestore();
 
+  const courseRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return doc(firestore, 'courses', params.id);
+  }, [firestore, params.id]);
+  const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
+
+  const enrollmentsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'enrollments');
+  }, [firestore]);
+  
+  const { data: allEnrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+
+  if (isCourseLoading || areEnrollmentsLoading) {
+      return <div>Loading...</div>;
+  }
+  
   if (!course) {
     notFound();
   }
@@ -23,7 +43,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const teacher = getTeacherById(course.teacherId);
   const placeholder = PlaceHolderImages.find(p => p.id === course.imageId);
   const assignments = getAssignmentsByCourse(course.id);
-  const isEnrolled = user ? enrollments.some(e => e.courseId === course.id && e.studentId === user.uid) : false;
+  const isEnrolled = user && allEnrollments ? allEnrollments.some(e => e.courseId === course.id && e.studentId === user.uid) : false;
 
   return (
     <div className="bg-card">

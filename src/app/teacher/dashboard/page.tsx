@@ -1,14 +1,14 @@
+
 "use client";
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Users, BookOpen } from "lucide-react";
-import { courses, getEnrollmentsByCourse } from "@/lib/data";
-import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { useEffect, useState } from "react";
-import type { User as AppUser } from "@/lib/types";
-import { doc, getDoc } from "firebase/firestore";
+import type { User as AppUser, Course, Enrollment } from "@/lib/types";
+import { doc, getDoc, collection, query, where } from "firebase/firestore";
 
 export default function TeacherDashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -19,6 +19,21 @@ export default function TeacherDashboardPage() {
     () => (user && firestore ? doc(firestore, 'users', user.uid) : null),
     [user, firestore]
   );
+  
+  const teacherCoursesQuery = useMemoFirebase(() => {
+    if (!firestore || !appUser) return null;
+    return query(collection(firestore, 'courses'), where('teacherId', '==', appUser.id));
+  }, [firestore, appUser]);
+
+  const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
+
+  const enrollmentsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    // This is not ideal, a collectionGroup query would be better
+    return collection(firestore, 'enrollments');
+  }, [firestore]);
+
+  const { data: allEnrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   useEffect(() => {
     if (userDocRef) {
@@ -32,8 +47,6 @@ export default function TeacherDashboardPage() {
     }
   }, [userDocRef]);
   
-  const teacherCourses = appUser ? courses.filter(c => c.teacherId === appUser.id) : [];
-
   if (isUserLoading || (user && !appUser)) {
     return <div>Loading...</div>;
   }
@@ -67,10 +80,11 @@ export default function TeacherDashboardPage() {
 
       <section>
         <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
-        {teacherCourses.length > 0 ? (
+        {(coursesLoading || enrollmentsLoading) && <p>Loading courses...</p>}
+        {teacherCourses && teacherCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {teacherCourses.map(course => {
-              const enrollments = getEnrollmentsByCourse(course.id);
+              const enrollments = allEnrollments?.filter(e => e.courseId === course.id) || [];
               return (
                 <Card key={course.id} className="hover:shadow-md transition-shadow">
                   <CardHeader>
@@ -93,7 +107,7 @@ export default function TeacherDashboardPage() {
             })}
           </div>
         ) : (
-          <div className="text-center py-12 border-2 border-dashed rounded-lg">
+          !(coursesLoading || enrollmentsLoading) && <div className="text-center py-12 border-2 border-dashed rounded-lg">
             <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">You haven't created any courses</h3>
             <p className="mt-2 text-sm text-muted-foreground">Get started by creating your first course.</p>

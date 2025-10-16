@@ -7,10 +7,10 @@ import { getStudentCourses, getTeacherById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { useEffect, useState } from 'react';
 import type { User as AppUser, Course } from '@/lib/types';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection } from 'firebase/firestore';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -21,6 +21,13 @@ export default function DashboardPage() {
     () => (user && firestore ? doc(firestore, 'users', user.uid) : null),
     [user, firestore]
   );
+
+  const coursesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'courses');
+  }, [firestore]);
+
+  const { data: allCourses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
 
   useEffect(() => {
     if (userDocRef) {
@@ -34,7 +41,7 @@ export default function DashboardPage() {
     }
   }, [userDocRef]);
   
-  if (isUserLoading || (user && !appUser)) {
+  if (isUserLoading || (user && !appUser) || coursesLoading) {
     return <div>Loading...</div>;
   }
   
@@ -50,8 +57,7 @@ export default function DashboardPage() {
     );
   }
 
-  // TODO: Replace with real data from Firestore
-  const enrolledCourses = getStudentCourses(appUser.id);
+  const enrolledCourses = getStudentCourses(appUser.id, allCourses || []);
 
   return (
     <div className="container py-8 md:py-12">

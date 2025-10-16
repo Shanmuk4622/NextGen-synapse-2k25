@@ -1,14 +1,26 @@
 
+'use client';
+
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { CourseCard } from '@/components/course/CourseCard';
-import { courses } from '@/lib/data';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { collection } from 'firebase/firestore';
+import type { Course } from '@/lib/types';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-image');
+  const firestore = useFirestore();
+
+  const coursesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'courses');
+  }, [firestore]);
+
+  const { data: courses, isLoading } = useCollection<Course>(coursesQuery);
 
   return (
     <div className="flex flex-col">
@@ -57,8 +69,9 @@ export default function Home() {
               Hand-picked courses designed to help you master new skills and advance your career.
             </p>
           </div>
+          {isLoading && <p>Loading courses...</p>}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {courses.map((course: any) => (
+            {courses && courses.map((course: any) => (
               <CourseCard key={course.id} course={course} />
             ))}
           </div>

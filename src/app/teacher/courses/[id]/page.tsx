@@ -1,7 +1,7 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { getCourseById, getEnrollmentsByCourse, getStudentById, getAssignmentsByCourse, getSubmissionsForAssignment } from "@/lib/data";
+import { getStudentById, getAssignmentsByCourse, getCourseById, getEnrollmentsByCourse } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,10 +16,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from "@/firebase";
 import { useEffect, useState } from "react";
-import type { User as AppUser } from "@/lib/types";
-import { doc, getDoc } from "firebase/firestore";
+import type { User as AppUser, Course, Enrollment } from "@/lib/types";
+import { doc, getDoc, collection } from "firebase/firestore";
 import Link from "next/link";
 
 
@@ -33,6 +33,19 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
     [user, firestore]
   );
 
+  const courseRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return doc(firestore, 'courses', params.id);
+  }, [firestore, params.id]);
+  const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
+
+  const enrollmentsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'enrollments');
+  }, [firestore]);
+  
+  const { data: allEnrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+
   useEffect(() => {
     if (userDocRef) {
       getDoc(userDocRef).then(docSnap => {
@@ -45,9 +58,7 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
     }
   }, [userDocRef]);
 
-  const course = getCourseById(params.id);
-
-  if (isUserLoading || (user && !appUser)) {
+  if (isUserLoading || (user && !appUser) || isCourseLoading || areEnrollmentsLoading) {
     return <div>Loading...</div>;
   }
 
@@ -55,7 +66,7 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
     notFound();
   }
 
-  const enrollments = getEnrollmentsByCourse(course.id);
+  const enrollments = getEnrollmentsByCourse(course.id, allEnrollments || []);
   const students = enrollments.map(e => getStudentById(e.studentId)).filter(Boolean);
   const assignments = getAssignmentsByCourse(course.id);
 

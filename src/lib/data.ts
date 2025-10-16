@@ -9,8 +9,6 @@ export const users: User[] = [
   { id: 'user-5', name: 'Dr. Eve Miller', email: 'eve@example.com', role: 'teacher' },
 ];
 
-export const courses: Course[] = [];
-
 export const enrollments: Enrollment[] = [
   { id: 'enroll-1', studentId: 'user-1', courseId: 'course-1', enrollmentDate: new Date('2023-09-01') },
   { id: 'enroll-2', studentId: 'user-1', courseId: 'course-3', enrollmentDate: new Date('2023-09-05') },
@@ -72,13 +70,22 @@ export const submissions: Submission[] = [
 // Helper functions to query mock data
 export const getTeacherById = (id: string) => users.find(u => u.id === id && u.role === 'teacher');
 export const getStudentById = (id: string) => users.find(u => u.id === id && u.role === 'student');
-export const getCourseById = (id: string) => courses.find(c => c.id === id);
 export const getAssignmentsByCourse = (courseId: string) => assignments.filter(a => a.courseId === courseId);
 export const getSubmissionsForAssignment = (assignmentId: string) => submissions.filter(s => s.assignmentId === assignmentId);
 export const getEnrollmentsByStudent = (studentId: string) => enrollments.filter(e => e.studentId === studentId);
-export const getEnrollmentsByCourse = (courseId: string) => enrollments.filter(e => e.courseId === courseId);
-export const getStudentCourses = (studentId: string) => {
+
+export const getStudentCourses = (studentId: string, allCourses: Course[]) => {
   const studentEnrollments = getEnrollmentsByStudent(studentId);
-  return courses.filter(course => studentEnrollments.some(e => e.courseId === course.id));
+  if (!allCourses) return [];
+  return allCourses.filter(course => studentEnrollments.some(e => e.courseId === course.id));
 };
 
+export const getCourseById = (id: string, allCourses: Course[]) => {
+  if (!allCourses) return undefined;
+  return allCourses.find(c => c.id === id);
+}
+
+export const getEnrollmentsByCourse = (courseId: string, allEnrollments: Enrollment[]) => {
+  if (!allEnrollments) return [];
+  return allEnrollments.filter(e => e.courseId === courseId);
+};
