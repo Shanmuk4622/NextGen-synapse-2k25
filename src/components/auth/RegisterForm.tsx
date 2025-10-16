@@ -6,7 +6,7 @@ import { z } from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc } from "firebase/firestore";
+import { doc, serverTimestamp } from "firebase/firestore";
 import { useAuth, useFirestore, setDocumentNonBlocking } from "@/firebase";
 
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,14 @@ export function RegisterForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!auth || !firestore) {
+      toast({
+        variant: "destructive",
+        title: "Registration Failed",
+        description: "Firebase is not available. Please try again later.",
+      });
+      return;
+    }
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
@@ -69,6 +77,7 @@ export function RegisterForm() {
         name: values.name,
         email: values.email,
         role: values.role,
+        createdAt: serverTimestamp(),
       };
 
       setDocumentNonBlocking(userDocRef, userData, { merge: true });
