@@ -2,91 +2,85 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
+import type {
   DocumentReference,
-  onSnapshot,
   DocumentData,
   FirestoreError,
   DocumentSnapshot,
 } from 'firebase/firestore';
+import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useUser } from '../provider';
 
-/** Utility type to add an 'id' field to a given type T. */
-type WithId<T> = T & { id: string };
+export type WithId<T> = T & { id: string };
 
-/**
- * Interface for the return value of the useDoc hook.
- * @template T Type of the document data.
- */
 export interface UseDocResult<T> {
-  data: WithId<T> | null; // Document data with ID, or null.
-  isLoading: boolean;       // True if loading.
-  error: FirestoreError | Error | null; // Error object, or null.
+  data: WithId<T> | null;
+  isLoading: boolean;
+  error: FirestoreError | Error | null;
 }
 
 /**
- * React hook to subscribe to a single Firestore document in real-time.
- * Handles nullable references. Assumes it is rendered inside a parent
- * that has already waited for authentication to resolve.
+ * React hook to subscribe to a single Firestore document.
  *
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedDocRef or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence. Also make sure that its dependencies are stable
- * references
+ * NEW BEHAVIOR: This hook no longer needs its own auth check. The parent
+ * `FirebaseProvider` now guarantees that authentication is resolved before
+ * this hook can even be executed.
  *
- * @template T Optional type for document data. Defaults to any.
- * @param {DocumentReference<DocumentData> | null | undefined} docRef -
- * The Firestore DocumentReference. If null/undefined, the hook will be in a loading state.
- * @returns {UseDocResult<T>} Object with data, isLoading, error.
+ * It will correctly handle a `null` or `undefined` docRef, entering a loading
+ * state until a valid reference is provided.
  */
 export function useDoc<T = any>(
   memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
 ): UseDocResult<T> {
-  type StateDataType = WithId<T> | null;
-
-  const [data, setData] = useState<StateDataType>(null);
+  const [data, setData] = useState<WithId<T> | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  
-  // isLoading is true if we have no data and no error yet.
-  const isLoading = !data && !error;
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // If the reference is not ready, do nothing. The hook remains in a loading state.
+    // If the document reference isn't ready, we are in a loading state.
+    // Reset state and wait for a valid reference.
     if (!memoizedDocRef) {
+      setIsLoading(true);
       setData(null);
       setError(null);
       return;
     }
 
-    // Reference is ready, start listening.
+    // A valid reference is provided. Start loading.
+    setIsLoading(true);
+
     const unsubscribe = onSnapshot(
       memoizedDocRef,
       (snapshot: DocumentSnapshot<DocumentData>) => {
         if (snapshot.exists()) {
           setData({ ...(snapshot.data() as T), id: snapshot.id });
         } else {
-          // Document does not exist
+          // Document does not exist. This is a valid state, not an error.
           setData(null);
         }
-        setError(null); // Clear any previous error on successful snapshot
+        setError(null); // Clear any previous error.
+        setIsLoading(false); // Loading is complete.
       },
       (error: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
           operation: 'get',
           path: memoizedDocRef.path,
-        })
+        });
 
-        setError(contextualError)
-        setData(null)
+        setError(contextualError);
+        setData(null);
+        setIsLoading(false); // Stop loading on error.
 
-        // trigger global error propagation
+        // Propagate the error for global handling.
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
+    // Cleanup subscription on unmount or if the reference changes.
     return () => unsubscribe();
-  }, [memoizedDocRef]); // Re-run only if the reference itself changes.
+  }, [memoizedDocRef]);
 
   return { data, isLoading, error };
 }

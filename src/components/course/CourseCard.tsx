@@ -16,7 +16,6 @@ type CourseCardProps = {
 function TeacherProfile({ teacherId }: { teacherId: string }) {
   const firestore = useFirestore();
   
-  // DEFENSIVE CHECK: Only create a reference if teacherId is valid.
   const teacherRef = useMemoFirebase(() => {
     if (!firestore || !teacherId) return null;
     return doc(firestore, 'users', teacherId);
@@ -68,7 +67,6 @@ export function CourseCard({ course }: CourseCardProps) {
           <p className="text-muted-foreground text-sm line-clamp-3">{course.description}</p>
         </CardContent>
         <CardFooter className="flex justify-between items-center p-4 pt-0 text-sm text-muted-foreground">
-          {/* RENDER GUARD: Only render when course data is ready */}
           {course.teacherId && <TeacherProfile teacherId={course.teacherId} />}
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" />

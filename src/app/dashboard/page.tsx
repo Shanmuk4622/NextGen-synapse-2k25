@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { User as AppUser, Course, Enrollment } from '@/lib/types';
 import { doc, collection, query, where, documentId } from 'firebase/firestore';
 
@@ -22,6 +22,11 @@ function EnrolledCourseCard({ course }: { course: Course }) {
 
   const { data: teacher, isLoading: isTeacherLoading } = useDoc<AppUser>(teacherRef);
   
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    setProgress(Math.floor(Math.random() * 81) + 20); // Mock progress
+  }, []);
+
   if (isTeacherLoading || !course) {
     return (
       <Card className="flex flex-col">
@@ -39,8 +44,6 @@ function EnrolledCourseCard({ course }: { course: Course }) {
     );
   }
   
-  const progress = Math.floor(Math.random() * 81) + 20; // Mock progress
-
   return (
       <Card className="flex flex-col">
         <CardHeader>
@@ -69,7 +72,6 @@ function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
 
   const coursesQuery = useMemoFirebase(() => {
     if (!firestore || courseIds.length === 0) return null;
-    // Firestore 'in' queries are limited to 30 items.
     return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds.slice(0, 30)));
   }, [firestore, courseIds]);
 
@@ -78,10 +80,14 @@ function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
   if (areCoursesLoading) {
     return <div>Loading course details...</div>
   }
+  
+  if (!courses || courses.length === 0) {
+    return <div>You are enrolled in courses that could not be found.</div>
+  }
 
   return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {courses?.map(course => (
+        {courses.map(course => (
           <EnrolledCourseCard key={course.id} course={course} />
         ))}
       </div>
@@ -93,7 +99,7 @@ function StudentDashboard({ appUser }: { appUser: AppUser }) {
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !appUser?.id) return null;
-    return query(collection(firestore, `users/${appUser.id}/enrollments`));
+    return collection(firestore, `users/${appUser.id}/enrollments`);
   }, [firestore, appUser.id]);
 
   const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
@@ -120,7 +126,7 @@ function StudentDashboard({ appUser }: { appUser: AppUser }) {
 
 
 export default function DashboardPage() {
-  const { user, isUserLoading } = useUser();
+  const { user, isAuthLoading } = useUser();
   const firestore = useFirestore();
 
   const appUserRef = useMemoFirebase(() => {
@@ -130,7 +136,7 @@ export default function DashboardPage() {
 
   const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(appUserRef);
   
-  const isLoading = isUserLoading || isAppUserLoading;
+  const isLoading = isAuthLoading || isAppUserLoading;
   
   if (isLoading) {
     return <div>Loading...</div>;
@@ -159,7 +165,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-8">
           <section>
             <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
-            {appUser && <StudentDashboard appUser={appUser} />}
+            <StudentDashboard appUser={appUser} />
           </section>
 
           <section>
