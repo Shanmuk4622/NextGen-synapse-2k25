@@ -44,7 +44,8 @@ export function useCollection<T = any>(
   const { isAuthLoading } = useUser();
 
   useEffect(() => {
-    // If the query isn't ready, do nothing.
+    // If the auth state is loading or the query isn't ready, do nothing.
+    // The parent FirebaseProvider now guarantees isAuthLoading will become false.
     if (isAuthLoading || !memoizedTargetRefOrQuery) {
       setData(null);
       setError(null);
@@ -84,8 +85,8 @@ export function useCollection<T = any>(
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // The hook is loading if there's a query but no data/error yet.
-  const isLoading = (!!memoizedTargetRefOrQuery && data === null && error === null);
+  // The hook is loading if auth is loading, or if there's a query but no data/error yet.
+  const isLoading = isAuthLoading || (!!memoizedTargetRefOrQuery && data === null && error === null);
   
   return { data, isLoading, error };
 }
