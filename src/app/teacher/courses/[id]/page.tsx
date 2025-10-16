@@ -1,7 +1,7 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { getStudentById, getAssignmentsByCourse, getCourseById, getEnrollmentsByCourse } from "@/lib/data";
+import { getStudentById, getAssignmentsByCourse, getSubmissionsForAssignment } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,7 +19,7 @@ import {
 import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from "@/firebase";
 import { useEffect, useState } from "react";
 import type { User as AppUser, Course, Enrollment } from "@/lib/types";
-import { doc, getDoc, collection } from "firebase/firestore";
+import { doc, getDoc, collection, query, where } from "firebase/firestore";
 import Link from "next/link";
 
 
@@ -40,11 +40,11 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'enrollments');
-  }, [firestore]);
+    if (!firestore || !params.id) return null;
+    return query(collection(firestore, 'enrollments'), where('courseId', '==', params.id));
+  }, [firestore, params.id]);
   
-  const { data: allEnrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   useEffect(() => {
     if (userDocRef) {
@@ -66,8 +66,7 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
     notFound();
   }
 
-  const enrollments = getEnrollmentsByCourse(course.id, allEnrollments || []);
-  const students = enrollments.map(e => getStudentById(e.studentId)).filter(Boolean);
+  const students = (enrollments || []).map(e => getStudentById(e.studentId)).filter(Boolean);
   const assignments = getAssignmentsByCourse(course.id);
 
   return (
@@ -152,7 +151,7 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
                   </TableHeader>
                   <TableBody>
                     {students.map(student => {
-                      const enrollment = enrollments.find(e => e.studentId === student!.id);
+                      const enrollment = enrollments?.find(e => e.studentId === student!.id);
                       return(
                         <TableRow key={student!.id}>
                           <TableCell className="flex items-center gap-3">
