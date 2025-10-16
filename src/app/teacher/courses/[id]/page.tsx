@@ -26,14 +26,30 @@ import Link from "next/link";
 
 export default function TeacherCoursePage({ params }: { params: { id: string } }) {
   const id = React.use(params).id;
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
   const [appUser, setAppUser] = useState<AppUser | null>(null);
+  const [isAppUserLoading, setIsAppUserLoading] = useState(true);
 
-  const userDocRef = useMemoFirebase(
-    () => (firestore && user?.uid ? doc(firestore, 'users', user.uid) : null),
-    [firestore, user?.uid]
-  );
+  useEffect(() => {
+    if (isAuthLoading || !user || !firestore) {
+      if (!isAuthLoading) {
+        setIsAppUserLoading(false);
+      }
+      return;
+    };
+    
+    setIsAppUserLoading(true);
+    const userDocRef = doc(firestore, 'users', user.uid);
+    getDoc(userDocRef).then(docSnap => {
+      if (docSnap.exists()) {
+        setAppUser(docSnap.data() as AppUser);
+      } else {
+        setAppUser(null);
+      }
+      setIsAppUserLoading(false);
+    }).catch(() => setIsAppUserLoading(false));
+  }, [user, isAuthLoading, firestore]);
 
   const courseRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -42,29 +58,21 @@ export default function TeacherCoursePage({ params }: { params: { id: string } }
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
   
   const enrollmentsQuery = useMemoFirebase(() => {
+    // Only build the query if firestore and a course ID are available
     if (!firestore || !id) return null;
     return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', id));
   }, [firestore, id]);
   
   const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
-  useEffect(() => {
-    if (userDocRef) {
-      getDoc(userDocRef).then(docSnap => {
-        if (docSnap.exists()) {
-          setAppUser(docSnap.data() as AppUser);
-        }
-      });
-    } else {
-      setAppUser(null);
-    }
-  }, [userDocRef]);
+  const isLoading = isAuthLoading || isAppUserLoading || isCourseLoading || areEnrollmentsLoading;
 
-  if (isUserLoading || (user && !appUser) || isCourseLoading || areEnrollmentsLoading) {
+  if (isLoading) {
     return <div>Loading...</div>;
   }
 
-  if (!course || !appUser || (appUser.role === 'teacher' && course.teacherId !== user?.uid)) {
+  // This check can only happen after all loading is complete.
+  if (!course || !user || !appUser || (appUser.role === 'teacher' && course.teacherId !== user.uid)) {
     notFound();
   }
 

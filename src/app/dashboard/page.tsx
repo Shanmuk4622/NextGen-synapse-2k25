@@ -14,50 +14,59 @@ import type { User as AppUser, Course, Enrollment } from '@/lib/types';
 import { doc, getDoc, collection, query, where, documentId } from 'firebase/firestore';
 
 export default function DashboardPage() {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
   const [appUser, setAppUser] = useState<AppUser | null>(null);
+  const [isAppUserLoading, setIsAppUserLoading] = useState(true);
 
-  const userDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'users', user.uid) : null),
-    [user, firestore]
-  );
-
+  // Step 1: Get the App User object
   useEffect(() => {
-    if (userDocRef) {
-      getDoc(userDocRef).then(docSnap => {
-        if (docSnap.exists()) {
-          setAppUser(docSnap.data() as AppUser);
-        }
-      });
-    } else {
-      setAppUser(null);
-    }
-  }, [userDocRef]);
+    if (isAuthLoading || !user || !firestore) {
+      if (!isAuthLoading) {
+        setIsAppUserLoading(false);
+      }
+      return;
+    };
 
+    setIsAppUserLoading(true);
+    const userDocRef = doc(firestore, 'users', user.uid);
+    getDoc(userDocRef).then(docSnap => {
+      if (docSnap.exists()) {
+        setAppUser(docSnap.data() as AppUser);
+      } else {
+        setAppUser(null);
+      }
+      setIsAppUserLoading(false);
+    }).catch(() => setIsAppUserLoading(false));
+  }, [user, isAuthLoading, firestore]);
+
+  // Step 2: Get user's enrollments. This query depends on a valid user.
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return query(collection(firestore, `users/${user.uid}/enrollments`));
   }, [firestore, user?.uid]);
 
-  const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
+  // Step 3: Get the course IDs from the enrollments.
   const enrolledCourseIds = useMemo(() => {
-    if (!enrollments) return null; // Distinguish between loading and empty
-    if (enrollments.length === 0) return [];
+    if (!enrollments) return [];
     return enrollments.map(e => e.courseId);
   }, [enrollments]);
 
+  // Step 4: Get the actual course documents. This query depends on having valid course IDs.
   const coursesQuery = useMemoFirebase(() => {
-    if (!firestore || !enrolledCourseIds || enrolledCourseIds.length === 0) {
+    // Only run this query if we have a user, have their enrollments, and there's at least one course ID.
+    if (!firestore || areEnrollmentsLoading || enrolledCourseIds.length === 0) {
       return null;
     }
     return query(collection(firestore, 'courses'), where(documentId(), 'in', enrolledCourseIds));
-  }, [firestore, enrolledCourseIds]);
+  }, [firestore, areEnrollmentsLoading, enrolledCourseIds]);
 
-  const { data: enrolledCourses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
+  const { data: enrolledCourses, isLoading: areCoursesLoading } = useCollection<Course>(coursesQuery);
 
-  const isLoading = isUserLoading || (user && !appUser) || enrollmentsLoading || (enrolledCourseIds && enrolledCourseIds.length > 0 && coursesLoading);
+  // Master loading state: true until all sequential steps are complete.
+  const isLoading = isAuthLoading || isAppUserLoading || areEnrollmentsLoading || (enrolledCourseIds.length > 0 && areCoursesLoading);
   
   if (isLoading) {
     return <div>Loading...</div>;
