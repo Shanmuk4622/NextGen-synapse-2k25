@@ -40,18 +40,20 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   auth,
 }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true); // Start as true
 
   useEffect(() => {
+    // onAuthStateChanged returns an unsubscribe function
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      setIsAuthLoading(false);
+      setIsAuthLoading(false); // Set to false once the check is complete
     }, (error) => {
       console.error("FirebaseProvider: onAuthStateChanged error:", error);
       setUser(null);
-      setIsAuthLoading(false);
+      setIsAuthLoading(false); // Also set to false on error
     });
 
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [auth]);
 
@@ -65,6 +67,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     user,
     isAuthLoading,
   }), [user, isAuthLoading]);
+
+  // *** THE AUTHENTICATION GATE ***
+  // Do not render children until the initial auth check is complete.
+  // This prevents all child components from running and making premature queries.
+  if (isAuthLoading) {
+    return null; // Or a full-screen loader component
+  }
 
   return (
     <FirebaseContext.Provider value={contextValue}>

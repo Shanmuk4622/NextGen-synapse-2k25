@@ -11,7 +11,6 @@ import type {
 import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useUser } from '@/firebase/provider';
 
 export type WithId<T> = T & { id: string };
 
@@ -23,20 +22,18 @@ export interface UseDocResult<T> {
 
 /**
  * React hook to subscribe to a single Firestore document.
- *
- * It will correctly handle a `null` or `undefined` docRef.
+ * It now implicitly waits for auth to be ready because FirebaseProvider won't render it otherwise.
  */
 export function useDoc<T = any>(
   memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined,
 ): UseDocResult<T> {
   const [data, setData] = useState<WithId<T> | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const { isAuthLoading } = useUser();
 
   useEffect(() => {
-    // If the auth state is loading or the ref isn't ready, do nothing.
-    // This is the critical guard to prevent premature queries.
-    if (isAuthLoading || !memoizedDocRef) {
+    // If the doc ref isn't ready, reset state and do nothing.
+    // No need to check for auth loading here anymore, thanks to the Provider gate.
+    if (!memoizedDocRef) {
       setData(null);
       setError(null);
       return;
@@ -66,14 +63,14 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef, isAuthLoading]);
+  }, [memoizedDocRef]);
 
   if(memoizedDocRef && !memoizedDocRef.__memo) {
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // The hook is loading if auth is loading, or if there's a ref but no data/error yet.
-  const isLoading = isAuthLoading || (!!memoizedDocRef && data === null && error === null);
+  // isLoading is true if a docRef is provided but we don't have data or an error yet.
+  const isLoading = !!memoizedDocRef && data === null && error === null;
   
   return { data, isLoading, error };
 }

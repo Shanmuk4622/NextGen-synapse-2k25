@@ -12,7 +12,6 @@ import type {
 import { onSnapshot } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useUser } from '@/firebase/provider';
 
 export type WithId<T> = T & { id: string };
 
@@ -33,20 +32,18 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query.
- *
- * It will correctly handle a `null` or `undefined` query.
+ * It now implicitly waits for auth to be ready because FirebaseProvider won't render it otherwise.
  */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
 ): UseCollectionResult<T> {
   const [data, setData] = useState<WithId<T>[] | null>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const { isAuthLoading } = useUser();
 
   useEffect(() => {
-    // If the auth state is loading or the query isn't ready, do nothing.
-    // This is the critical guard to prevent premature queries.
-    if (isAuthLoading || !memoizedTargetRefOrQuery) {
+    // If the query isn't ready, reset state and do nothing.
+    // No need to check for auth loading here anymore, thanks to the Provider gate.
+    if (!memoizedTargetRefOrQuery) {
       setData(null);
       setError(null);
       return;
@@ -79,14 +76,14 @@ export function useCollection<T = any>(
 
     // Cleanup subscription on unmount or if the query changes.
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, isAuthLoading]);
+  }, [memoizedTargetRefOrQuery]);
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error('A firestore query was not properly memoized using useMemoFirebase');
   }
 
-  // The hook is loading if auth is loading, or if there's a query but no data/error yet.
-  const isLoading = isAuthLoading || (!!memoizedTargetRefOrQuery && data === null && error === null);
+  // isLoading is true if a query is provided but we don't have data or an error yet.
+  const isLoading = !!memoizedTargetRefOrQuery && data === null && error === null;
   
   return { data, isLoading, error };
 }
