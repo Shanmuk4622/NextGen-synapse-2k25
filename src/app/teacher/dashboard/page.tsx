@@ -34,6 +34,7 @@ export default function TeacherDashboardPage() {
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !courseIds || courseIds.length === 0) return null;
+    // This query is now correctly structured to fetch enrollments only for the teacher's courses.
     return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
   }, [firestore, courseIds]);
 
