@@ -15,10 +15,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from "@/firebase";
+import { useUser, useFirestore, useMemoFirebase, useDoc } from "@/firebase";
 import React from "react";
-import type { User as AppUser, Course, Enrollment } from "@/lib/types";
-import { doc, collection, query, where } from "firebase/firestore";
+import type { User as AppUser, Course } from "@/lib/types";
+import { doc } from "firebase/firestore";
 
 function StudentRow({ studentId }: { studentId: string }) {
     const firestore = useFirestore();
@@ -61,21 +61,8 @@ function StudentRow({ studentId }: { studentId: string }) {
     );
 }
 
-function EnrolledStudents({ courseId }: { courseId: string }) {
-  const firestore = useFirestore();
-
-  const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !courseId) return null;
-    return query(collection(firestore, 'enrollments'), where('courseId', '==', courseId));
-  }, [firestore, courseId]);
-
-  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
-
-  if (areEnrollmentsLoading) {
-    return <p className="text-muted-foreground text-center py-4">Loading students...</p>;
-  }
-
-  if (!enrollments || enrollments.length === 0) {
+function EnrolledStudents({ studentIds }: { studentIds: string[] }) {
+  if (!studentIds || studentIds.length === 0) {
      return <p className="text-muted-foreground text-center py-4">No students are enrolled in this course yet.</p>
   }
 
@@ -88,8 +75,8 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {enrollments.map(enrollment => (
-             enrollment && enrollment.studentId && <StudentRow key={enrollment.id} studentId={enrollment.studentId} />
+          {studentIds.map(studentId => (
+             <StudentRow key={studentId} studentId={studentId} />
           ))}
         </TableBody>
       </Table>
@@ -170,7 +157,7 @@ export default function TeacherCoursePage() {
               <CardTitle className="font-headline text-2xl">Enrolled Students</CardTitle>
             </CardHeader>
             <CardContent>
-                {id && <EnrolledStudents courseId={id} />}
+                <EnrolledStudents studentIds={course.enrolledStudentIds || []} />
             </CardContent>
           </Card>
         </div>

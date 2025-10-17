@@ -8,7 +8,6 @@ import { PlusCircle, Users, BookOpen } from "lucide-react";
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase";
 import type { User as AppUser, Course } from "@/lib/types";
 import { doc, collection, query, where } from "firebase/firestore";
-import { useEffect } from "react";
 
 function TeacherCourses({ appUser }: { appUser: AppUser }) {
     const firestore = useFirestore();
@@ -40,7 +39,7 @@ function TeacherCourses({ appUser }: { appUser: AppUser }) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {teacherCourses.map(course => {
-            const studentCount = course.studentCount || 0;
+            const studentCount = course.enrolledStudentIds?.length || 0;
             return (
                 <Card key={course.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>

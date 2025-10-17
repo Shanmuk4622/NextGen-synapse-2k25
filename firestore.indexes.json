@@ -1,31 +1,12 @@
+
 {
   "indexes": [
     {
-      "collectionGroup": "enrollments",
+      "collectionGroup": "courses",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "courseId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "enrollmentDate",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "enrollments",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "studentId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "enrollmentDate",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "enrolledStudentIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ]

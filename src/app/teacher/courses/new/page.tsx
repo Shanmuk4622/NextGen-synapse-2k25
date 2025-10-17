@@ -67,7 +67,7 @@ export default function CreateCoursePage() {
       teacherId: user.uid,
       teacherName: appUser.name,
       imageId: randomImage.id,
-      studentCount: 0,
+      enrolledStudentIds: [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

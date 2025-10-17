@@ -14,7 +14,7 @@ export type Course = {
   teacherId: string;
   teacherName: string;
   imageId: string;
-  studentCount: number;
+  enrolledStudentIds?: string[];
   createdAt?: Date;
   updatedAt?: Date;
 };

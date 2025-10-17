@@ -68,21 +68,16 @@ function EnrolledCourseCard({ course }: { course: Course }) {
   );
 }
 
-function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
+function EnrolledCoursesList({ appUser }: { appUser: AppUser }) {
   const firestore = useFirestore();
-  const courseIds = useMemo(() => {
-    if (!enrollments || enrollments.length === 0) return [];
-    return enrollments.map(e => e.courseId);
-  }, [enrollments]);
 
   const coursesQuery = useMemoFirebase(() => {
-    // Slice to 30 to stay within 'in' query limits
-    if (!firestore || courseIds.length === 0) return null;
-    return query(collection(firestore, 'courses'), where(documentId(), 'in', courseIds.slice(0, 30)));
-  }, [firestore, courseIds]);
+    if (!firestore || !appUser?.id) return null;
+    return query(collection(firestore, 'courses'), where('enrolledStudentIds', 'array-contains', appUser.id));
+  }, [firestore, appUser?.id]);
 
   const { data: courses, isLoading: areCoursesLoading } = useCollection<Course>(coursesQuery);
-
+  
   if (areCoursesLoading) {
     return <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <EnrolledCourseCardSkeleton />
@@ -91,7 +86,16 @@ function EnrolledCoursesList({ enrollments }: { enrollments: Enrollment[] }) {
   }
   
   if (!courses || courses.length === 0) {
-    return <div>You are enrolled in courses that could not be found.</div>
+    return (
+        <div className="text-center py-12 border-2 border-dashed rounded-lg">
+            <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">No Courses Yet</h3>
+            <p className="mt-2 text-sm text-muted-foreground">You are not enrolled in any courses.</p>
+            <Button asChild className="mt-4">
+                <Link href="/#courses">Explore Courses</Link>
+            </Button>
+        </div>
+     );
   }
 
   return (
@@ -119,37 +123,6 @@ function EnrolledCourseCardSkeleton() {
       </CardFooter>
     </Card>
   );
-}
-
-
-function StudentDashboard({ appUser }: { appUser: AppUser }) {
-  const firestore = useFirestore();
-
-  const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !appUser?.id) return null;
-    return query(collection(firestore, `enrollments`), where('studentId', '==', appUser.id));
-  }, [firestore, appUser?.id]);
-
-  const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
-
-  if (areEnrollmentsLoading) {
-    return <div>Loading your courses...</div>;
-  }
-  
-  if (!enrollments || enrollments.length === 0) {
-     return (
-        <div className="text-center py-12 border-2 border-dashed rounded-lg">
-            <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold">No Courses Yet</h3>
-            <p className="mt-2 text-sm text-muted-foreground">You are not enrolled in any courses.</p>
-            <Button asChild className="mt-4">
-                <Link href="/#courses">Explore Courses</Link>
-            </Button>
-        </div>
-     );
-  }
-
-  return <EnrolledCoursesList enrollments={enrollments} />;
 }
 
 
@@ -205,7 +178,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-8">
           <section>
             <h2 className="font-headline text-2xl font-semibold mb-4">My Courses</h2>
-            <StudentDashboard appUser={appUser} />
+            <EnrolledCoursesList appUser={appUser} />
           </section>
 
           <section>

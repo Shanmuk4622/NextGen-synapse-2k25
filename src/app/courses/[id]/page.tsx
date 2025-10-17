@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Clock, BookOpen, CheckCircle } from "lucide-react";
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
-import { doc, collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where, addDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
 import type { Course, Enrollment } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
@@ -29,22 +29,17 @@ export default function CourseDetailPage() {
   }, [firestore, id]);
   const { data: course, isLoading: isCourseLoading } = useDoc<Course>(courseRef);
 
-  const enrollmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !id) return null;
-    return query(collection(firestore, `enrollments`), where('courseId', '==', id), where('studentId', '==', user.uid));
-  }, [firestore, id, user?.uid]);
-
-  const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
-  
   useEffect(() => {
-    if (userEnrollment) {
-      setIsEnrolled(userEnrollment.length > 0);
+    if (user && course?.enrolledStudentIds?.includes(user.uid)) {
+      setIsEnrolled(true);
+    } else {
+      setIsEnrolled(false);
     }
-  }, [userEnrollment]);
+  }, [course, user]);
 
 
   const handleEnroll = async () => {
-    if (!user || !firestore || !course) {
+    if (!user || !firestore || !course || !courseRef) {
       toast({
         variant: "destructive",
         title: "Enrollment Failed",
@@ -54,12 +49,18 @@ export default function CourseDetailPage() {
     }
 
     try {
+      // Add a new document to the top-level enrollments collection
       const enrollmentsCollection = collection(firestore, `enrollments`);
       await addDoc(enrollmentsCollection, {
         id: uuidv4(),
         studentId: user.uid,
         courseId: course.id,
         enrollmentDate: serverTimestamp(),
+      });
+      
+      // Also, update the course document to include the student's ID
+      await updateDoc(courseRef, {
+        enrolledStudentIds: arrayUnion(user.uid)
       });
       
       toast({
@@ -73,12 +74,12 @@ export default function CourseDetailPage() {
       toast({
         variant: "destructive",
         title: "Enrollment Failed",
-        description: "An error occurred while trying to enroll you.",
+        description: "An error occurred while trying to enroll you. You may already be enrolled or there was a server issue.",
       });
     }
   };
 
-  const isLoading = isCourseLoading || isAuthLoading || (user && areEnrollmentsLoading);
+  const isLoading = isCourseLoading || isAuthLoading;
 
   if (isLoading) {
       return <div>Loading...</div>;

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -22,7 +23,8 @@
         "description": { "type": "string", "description": "A brief description of the course." },
         "duration": { "type": "string", "description": "The duration of the course (e.g., '8 weeks')." },
         "teacherId": { "type": "string", "description": "Reference to the User (Teacher) who created the course." },
-        "imageId": { "type": "string", "description": "Reference to the placeholder image for the course." }
+        "imageId": { "type": "string", "description": "Reference to the placeholder image for the course." },
+        "enrolledStudentIds": { "type": "array", "items": { "type": "string" }, "description": "List of student IDs enrolled in the course." }
       },
       "required": ["title", "description", "duration", "teacherId", "imageId"]
     },
@@ -57,7 +59,7 @@
         "definition": {
           "entityName": "Course",
           "schema": { "$ref": "#/entities/Course" },
-          "description": "Stores all course information. Publicly readable, but only teachers can create them."
+          "description": "Stores all course information. Publicly readable, but only teachers can create/update their own courses."
         }
       },
       {
