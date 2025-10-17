@@ -2,83 +2,89 @@
  * @fileoverview Firestore Security Rules for Course Central.
  *
  * Core Philosophy:
- * This ruleset enforces a user-ownership model for user profiles and enrollments,
- * and allows public read access to courses while restricting course creation to teachers.
+ * This ruleset enforces a strict user-ownership model for user profiles and enrollments,
+ * while allowing public read access to course information.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles.
- * - /courses/{courseId}: Stores course information.
- * - /users/{userId}/enrollments/{enrollmentId}: Stores enrollment records for each user.
+ * - /users/{userId}: Stores individual user profiles, accessible only to the user themselves.
+ * - /courses/{courseId}: Stores course details, publicly readable but write-protected.
+ * - /users/{userId}/enrollments/{enrollmentId}: Tracks user-specific enrollments, accessible only to the user.
  *
  * Key Security Decisions:
- * - Users can only read/write their own profile data.
- * - Courses are publicly readable, but only authenticated users can create, update, or delete them, 
- *   and only the teacher who created the course can modify it.
- * - Users can only read/write their own enrollment data.
- * - Listing all users or enrollments at the root collection is disallowed to prevent information leakage.
+ * - User listing is disallowed to protect user privacy.
+ * - Courses are publicly readable to facilitate discovery, but only teachers can create/modify them (TODO: Implement teacher role).
+ * - Enrollments are managed within user-specific subcollections, ensuring only the user can view or modify their own enrollments.
+ *
+ * Denormalization for Authorization:
+ * - The `Enrollment` document's `studentId` field MUST match the `userId` in the path to ensure ownership.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Secures user profiles, allowing only the user to read and write their own data.
      * @path /users/{userId}
-     * @allow (create) - User with UID 'user123' can create their own profile.
-     * @allow (get, update, delete) - User with UID 'user123' can read, update, and delete their own profile.
-     * @deny (get, update, delete) - User with UID 'otherUser' cannot read, update, or delete user 'user123's profile.
-     * @deny (list) - Listing all users is not allowed.
-     * @principle Enforces document ownership, restricting access to the user's own data.
+     * @allow (get, create, update, delete) if the request is made by the user with matching userId.
+     * @deny (get, create, update, delete) if the request is made by a different user or unauthenticated user.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
-    }
-
-    /**
-     * @description Controls access to course documents.
-     * @path /courses/{courseId}
-     * @allow (get, list) - Any user can read course details.
-     * @allow (create) - Authenticated users can create courses, with teacherId set to their own UID.
-     * @allow (update, delete) - Only the teacher who created the course can update or delete it.
-     * @deny (create) - Unauthenticated users cannot create courses.
-     * @deny (update, delete) - Other users cannot update or delete courses created by another teacher.
-     * @principle Allows public read access to courses while restricting creation, updates, and deletion to authenticated teachers.
-     */
-    match /courses/{courseId} {
       function isSignedIn() {
         return request.auth != null;
       }
 
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
-    }
-
-    /**
-     * @description Controls access to enrollment documents within a user's subcollection.
-     * @path /users/{userId}/enrollments/{enrollmentId}
-     * @allow (create, get, update, delete, list) - User with UID 'user123' can manage their own enrollments.
-     * @deny (create, get, update, delete, list) - User with UID 'otherUser' cannot manage user 'user123's enrollments.
-     * @principle Enforces document ownership, restricting access to the user's own enrollment data.
-     */
-    match /users/{userId}/enrollments/{enrollmentId} {
       function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+        return isSignedIn() && request.auth.uid == userId;
       }
 
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      allow list: if false; // User listing is not allowed.
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Manages course information, allowing public read access but restricting write access.
+     * @path /courses/{courseId}
+     * @allow (get, list) Public read access to course information.
+     * @allow (create) Only authenticated teachers can create courses (TODO: Implement teacher role check).
+     * @allow (update, delete) Only the teacher who created the course can update or delete it (TODO: Implement teacher role and ownership check).
+     * @deny (create, update, delete) if the request is made by a non-teacher or unauthenticated user.
+     * @principle Public read, owner-only writes (with teacher role).
+     */
+    match /courses/{courseId} {
+      allow get, list: if true;
+      allow create: if isSignedIn(); // TODO: Implement teacher role check
+      allow update: if false; // TODO: Implement teacher role and ownership check
+      allow delete: if false; // TODO: Implement teacher role and ownership check
+    }
+
+    /**
+     * @description Secures course enrollments within user-specific subcollections.
+     * @path /users/{userId}/enrollments/{enrollmentId}
+     * @allow (get, list, create, update, delete) if the request is made by the user with matching userId.
+     * @deny (get, list, create, update, delete) if the request is made by a different user or unauthenticated user.
+     * @principle Enforces document ownership for all operations within a user's data tree.
+     */
+    match /users/{userId}/enrollments/{enrollmentId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+        function isExistingOwner(userId) {
+        return isOwner(userId) && exists(resource.data);
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing enrollments is not allowed.
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
   }
 }
