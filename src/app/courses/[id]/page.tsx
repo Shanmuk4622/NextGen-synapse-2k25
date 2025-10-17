@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Clock, BookOpen, CheckCircle } from "lucide-react";
-import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection, addDocumentNonBlocking } from "@/firebase";
-import { doc, collection, query, where, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
-import type { Course, Enrollment } from '@/lib/types';
+import { useUser, useDoc, useFirestore, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
+import { doc, collection, serverTimestamp, updateDoc, arrayUnion, addDoc } from 'firebase/firestore';
+import type { Course } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 import React, { useEffect, useState } from "react";
@@ -49,19 +49,18 @@ export default function CourseDetailPage() {
     }
 
     try {
-      // Add a new document to the top-level enrollments collection
+      // Use the non-blocking function to add the enrollment document
       const enrollmentsCollection = collection(firestore, `enrollments`);
-      await addDoc(enrollmentsCollection, {
+      addDocumentNonBlocking(enrollmentsCollection, {
         id: uuidv4(),
         studentId: user.uid,
         courseId: course.id,
         enrollmentDate: serverTimestamp(),
       });
 
-      // Update the course document to include the student's ID
-      // This is now allowed by the new security rules, but it's better to
-      // make this a non-blocking call for a better user experience.
-      updateDocumentNonBlocking(courseRef, {
+      // Update the course document to include the student's ID using a non-blocking call
+      // This is allowed by security rules for authenticated users.
+      updateDoc(courseRef, {
         enrolledStudentIds: arrayUnion(user.uid)
       });
       
