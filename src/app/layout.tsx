@@ -19,7 +19,7 @@ const playfair = Playfair_Display({
   display: 'swap',
 });
 
-const ptSans = PT_sans({
+const ptSans = PT_Sans({
   subsets: ['latin'],
   weight: ['400', '700'],
   variable: '--font-body',
