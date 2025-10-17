@@ -1,7 +1,7 @@
+
 import {genkit, FlowAuth, Auth } from 'genkit';
 import {googleAI} from '@genkit-ai/google-genai';
-import { User, onAuthStateChanged } from 'firebase/auth';
-import { getAuth } from 'firebase/auth/lite';
+import { User, onAuthStateChanged, getAuth } from 'firebase/auth';
 import { initializeApp, getApps } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 
