@@ -8,7 +8,6 @@ import { Clock, UserCircle } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
-import { useEffect } from "react";
 
 type CourseCardProps = {
   course: Course;
