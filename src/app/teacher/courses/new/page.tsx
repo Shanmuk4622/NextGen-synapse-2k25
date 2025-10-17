@@ -12,10 +12,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle } from "lucide-react";
-import { useUser, useFirestore, addDocumentNonBlocking } from "@/firebase";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { useUser, useFirestore, addDocumentNonBlocking, useDoc } from "@/firebase";
+import { collection, serverTimestamp, doc } from "firebase/firestore";
 import { v4 as uuidv4 } from "uuid";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import type { User as AppUser } from "@/lib/types";
+import { useMemoFirebase } from "@/firebase";
 
 const courseFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters." }),
@@ -29,6 +31,13 @@ export default function CreateCoursePage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
+  const appUserRef = useMemoFirebase(() => {
+    if(!firestore || !user?.uid) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
+
+  const { data: appUser } = useDoc<AppUser>(appUserRef);
+
   const form = useForm<z.infer<typeof courseFormSchema>>({
     resolver: zodResolver(courseFormSchema),
     defaultValues: {
@@ -39,7 +48,7 @@ export default function CreateCoursePage() {
   });
 
   async function onSubmit(values: z.infer<typeof courseFormSchema>) {
-    if (!user || !firestore) {
+    if (!user || !firestore || !appUser) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -49,7 +58,6 @@ export default function CreateCoursePage() {
     }
 
     const courseId = uuidv4();
-    const coursesCollectionRef = collection(firestore, "courses");
     const placeholderImages = PlaceHolderImages.filter(p => p.id.startsWith("course-"));
     const randomImage = placeholderImages[Math.floor(Math.random() * placeholderImages.length)];
     
@@ -57,6 +65,7 @@ export default function CreateCoursePage() {
       id: courseId,
       ...values,
       teacherId: user.uid,
+      teacherName: appUser.name,
       imageId: randomImage.id,
       studentCount: 0,
       createdAt: serverTimestamp(),
@@ -132,7 +141,7 @@ export default function CreateCoursePage() {
               />
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
+                <Button type="submit" disabled={form.formState.isSubmitting || !appUser}>
                   {form.formState.isSubmitting ? "Creating..." : "Create Course"}
                 </Button>
               </div>

@@ -7,21 +7,12 @@ import { PersonalizedLearning } from '@/components/dashboard/PersonalizedLearnin
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { useMemo, useState, useEffect } from 'react';
 import type { User as AppUser, Course, Enrollment } from '@/lib/types';
 import { doc, collection, query, where, documentId } from 'firebase/firestore';
 
 function EnrolledCourseCard({ course }: { course: Course }) {
-  const firestore = useFirestore();
-
-  const teacherRef = useMemoFirebase(() => {
-    if (!firestore || !course?.teacherId) return null;
-    return doc(firestore, 'users', course.teacherId);
-  }, [firestore, course?.teacherId]);
-
-  const { data: teacher, isLoading: isTeacherLoading } = useDoc<AppUser>(teacherRef);
-  
   const [progress, setProgress] = useState(0);
   
   useEffect(() => {
@@ -29,7 +20,7 @@ function EnrolledCourseCard({ course }: { course: Course }) {
     setProgress(Math.floor(Math.random() * 81) + 20);
   }, []);
 
-  if (isTeacherLoading || !course) {
+  if (!course) {
     return (
       <Card className="flex flex-col">
         <CardHeader>
@@ -50,7 +41,7 @@ function EnrolledCourseCard({ course }: { course: Course }) {
       <Card className="flex flex-col">
         <CardHeader>
           <CardTitle className="font-headline text-xl">{course.title}</CardTitle>
-          <CardDescription>by {teacher?.name || '...'}</CardDescription>
+          <CardDescription>by {course.teacherName || '...'}</CardDescription>
         </CardHeader>
         <CardContent className="flex-grow">
           <div className="space-y-2">

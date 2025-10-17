@@ -10,29 +10,16 @@ import { Separator } from "@/components/ui/separator";
 import { Clock, UserCircle, BookOpen, CheckCircle } from "lucide-react";
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { doc, collection, query, where, addDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
-import type { Course, Enrollment, User } from '@/lib/types';
+import type { Course, Enrollment } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 import React, { useEffect, useState } from "react";
 
-function TeacherProfile({ teacherId }: { teacherId: string }) {
-  const firestore = useFirestore();
-  
-  const teacherRef = useMemoFirebase(() => {
-    if (!firestore || !teacherId) return null;
-    return doc(firestore, 'users', teacherId);
-  }, [firestore, teacherId]);
-
-  const { data: teacher, isLoading } = useDoc<User>(teacherRef);
-
-  if (isLoading) {
-    return <span>Loading teacher...</span>;
-  }
-
+function TeacherProfile({ teacherName }: { teacherName: string }) {
   return (
     <div className="flex items-center gap-2">
       <UserCircle className="h-5 w-5" />
-      <span>{teacher?.name || 'N/A'}</span>
+      <span>{teacherName || 'N/A'}</span>
     </div>
   );
 }
@@ -135,7 +122,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         <div className="container relative z-10 h-full flex flex-col justify-end pb-12">
           <h1 className="font-headline text-4xl md:text-6xl font-bold text-primary-foreground">{course.title}</h1>
           <div className="flex items-center gap-4 mt-4 text-primary-foreground/90">
-            {course.teacherId && <TeacherProfile teacherId={course.teacherId} />}
+            <TeacherProfile teacherName={course.teacherName} />
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
               <span>{course.duration}</span>
