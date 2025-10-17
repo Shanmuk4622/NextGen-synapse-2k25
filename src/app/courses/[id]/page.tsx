@@ -2,7 +2,7 @@
 "use client";
 
 import Image from "next/image";
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,17 +14,10 @@ import type { Course, Enrollment } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 import React, { useEffect, useState } from "react";
+import { TeacherProfile } from "@/components/course/TeacherProfile";
 
-function TeacherProfile({ teacherName }: { teacherName: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <UserCircle className="h-5 w-5" />
-      <span>{teacherName || 'N/A'}</span>
-    </div>
-  );
-}
-
-export default function CourseDetailPage({ params: { id } }: { params: { id: string } }) {
+export default function CourseDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const { user, isAuthLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();

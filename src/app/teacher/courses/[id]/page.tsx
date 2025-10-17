@@ -1,7 +1,7 @@
 
 "use client";
 
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -97,7 +97,8 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
 }
 
 
-export default function TeacherCoursePage({ params: { id } }: { params: { id: string } }) {
+export default function TeacherCoursePage() {
+  const { id } = useParams<{ id: string }>();
   const { user, isAuthLoading } = useUser();
   const firestore = useFirestore();
 
