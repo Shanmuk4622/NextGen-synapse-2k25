@@ -1,4 +1,6 @@
 
+import type { Timestamp } from 'firebase/firestore';
+
 export type User = {
   id: string;
   name: string;
@@ -31,7 +33,7 @@ export type Assignment = {
   courseId: string;
   title: string;
   description: string;
-  dueDate: Date;
+  dueDate: Date | Timestamp;
   attachmentUrl?: string;
   createdAt?: Date;
 };

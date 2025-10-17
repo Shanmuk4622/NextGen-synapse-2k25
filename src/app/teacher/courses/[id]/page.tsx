@@ -19,7 +19,7 @@ import {
 import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from "@/firebase";
 import React, { useState } from "react";
 import type { User as AppUser, Course, Assignment } from "@/lib/types";
-import { doc, collection, query } from "firebase/firestore";
+import { doc, collection, query, type Timestamp } from "firebase/firestore";
 import { CreateAssignmentForm } from "@/components/course/CreateAssignmentForm";
 
 function StudentRow({ studentId }: { studentId: string }) {
@@ -110,19 +110,23 @@ function AssignmentList({ courseId }: { courseId: string }) {
 
   return (
     <div className="space-y-4">
-      {assignments.map(assignment => (
-        <Card key={assignment.id} className="transition-shadow hover:shadow-md">
-          <CardHeader>
-            <CardTitle className="text-lg">{assignment.title}</CardTitle>
-            <CardDescription>
-              Due: {format(new Date(assignment.dueDate), "PPP")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">{assignment.description}</p>
-          </CardContent>
-        </Card>
-      ))}
+      {assignments.map(assignment => {
+        // Firestore Timestamps need to be converted to JS Dates
+        const dueDate = (assignment.dueDate as unknown as Timestamp)?.toDate();
+        return (
+            <Card key={assignment.id} className="transition-shadow hover:shadow-md">
+            <CardHeader>
+                <CardTitle className="text-lg">{assignment.title}</CardTitle>
+                <CardDescription>
+                {dueDate ? `Due: ${format(dueDate, "PPP")}` : "No due date"}
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground">{assignment.description}</p>
+            </CardContent>
+            </Card>
+        );
+      })}
     </div>
   );
 }
