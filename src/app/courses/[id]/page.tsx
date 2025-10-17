@@ -7,7 +7,7 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Clock, UserCircle, BookOpen, CheckCircle } from "lucide-react";
+import { Clock, BookOpen, CheckCircle } from "lucide-react";
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { doc, collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Course, Enrollment } from '@/lib/types';
@@ -31,7 +31,7 @@ export default function CourseDetailPage() {
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !id) return null;
-    return query(collection(firestore, `users/${user.uid}/enrollments`), where('courseId', '==', id));
+    return query(collection(firestore, `enrollments`), where('courseId', '==', id), where('studentId', '==', user.uid));
   }, [firestore, id, user?.uid]);
 
   const { data: userEnrollment, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
@@ -54,7 +54,7 @@ export default function CourseDetailPage() {
     }
 
     try {
-      const enrollmentsCollection = collection(firestore, `users/${user.uid}/enrollments`);
+      const enrollmentsCollection = collection(firestore, `enrollments`);
       await addDoc(enrollmentsCollection, {
         id: uuidv4(),
         studentId: user.uid,

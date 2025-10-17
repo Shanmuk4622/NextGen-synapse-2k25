@@ -16,9 +16,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from "@/firebase";
-import React, { useEffect } from "react";
+import React from "react";
 import type { User as AppUser, Course, Enrollment } from "@/lib/types";
-import { doc, collection, collectionGroup, query, where } from "firebase/firestore";
+import { doc, collection, query, where } from "firebase/firestore";
 
 function StudentRow({ studentId }: { studentId: string }) {
     const firestore = useFirestore();
@@ -66,7 +66,7 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !courseId) return null;
-    return query(collectionGroup(firestore, 'enrollments'), where('courseId', '==', courseId));
+    return query(collection(firestore, 'enrollments'), where('courseId', '==', courseId));
   }, [firestore, courseId]);
 
   const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);

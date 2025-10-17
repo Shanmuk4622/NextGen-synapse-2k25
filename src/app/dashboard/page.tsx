@@ -127,7 +127,7 @@ function StudentDashboard({ appUser }: { appUser: AppUser }) {
 
   const enrollmentsQuery = useMemoFirebase(() => {
     if (!firestore || !appUser?.id) return null;
-    return collection(firestore, `users/${appUser.id}/enrollments`);
+    return query(collection(firestore, `enrollments`), where('studentId', '==', appUser.id));
   }, [firestore, appUser?.id]);
 
   const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);

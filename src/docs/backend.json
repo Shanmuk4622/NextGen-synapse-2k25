@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Course Central system, either a student or a teacher.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the user." },
+        "name": { "type": "string", "description": "The full name of the user." },
+        "email": { "type": "string", "description": "The email address of the user.", "format": "email" },
+        "role": { "type": "string", "description": "The role of the user (student or teacher)." }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "Course": {
+      "title": "Course",
+      "type": "object",
+      "description": "Represents a course offered in the Learning Management System.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the course." },
+        "title": { "type": "string", "description": "The title of the course." },
+        "description": { "type": "string", "description": "A brief description of the course." },
+        "duration": { "type": "string", "description": "The duration of the course (e.g., '8 weeks')." },
+        "teacherId": { "type": "string", "description": "Reference to the User (Teacher) who created the course." },
+        "imageId": { "type": "string", "description": "Reference to the placeholder image for the course." }
+      },
+      "required": ["title", "description", "duration", "teacherId", "imageId"]
+    },
+    "Enrollment": {
+      "title": "Enrollment",
+      "type": "object",
+      "description": "Represents the enrollment of a student in a course.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the enrollment record." },
+        "studentId": { "type": "string", "description": "Reference to the User (Student) enrolled in the course." },
+        "courseId": { "type": "string", "description": "Reference to the Course the student is enrolled in." },
+        "enrollmentDate": { "type": "string", "description": "The date the student enrolled.", "format": "date-time" }
+      },
+      "required": ["studentId", "courseId", "enrollmentDate"]
+    }
+  },
+  "auth": {
+    "providers": ["password", "anonymous"]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": { "$ref": "#/entities/User" },
+          "description": "Stores user profiles. Access is restricted to the user themselves."
+        }
+      },
+      {
+        "path": "/courses/{courseId}",
+        "definition": {
+          "entityName": "Course",
+          "schema": { "$ref": "#/entities/Course" },
+          "description": "Stores all course information. Publicly readable, but only teachers can create them."
+        }
+      },
+      {
+        "path": "/enrollments/{enrollmentId}",
+        "definition": {
+          "entityName": "Enrollment",
+          "schema": { "$ref": "#/entities/Enrollment" },
+          "description": "Tracks all course enrollments. Can be queried by studentId or courseId."
+        }
+      }
+    ]
+  }
+}
