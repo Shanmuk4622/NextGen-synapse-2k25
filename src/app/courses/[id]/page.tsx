@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Clock, BookOpen, CheckCircle } from "lucide-react";
-import { useUser, useDoc, useFirestore, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
-import { doc, collection, serverTimestamp, updateDoc, arrayUnion, addDoc } from 'firebase/firestore';
+import { useUser, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { doc, arrayUnion } from 'firebase/firestore';
 import type { Course } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
-import { v4 as uuidv4 } from 'uuid';
 import React, { useEffect, useState } from "react";
 import { TeacherProfile } from "@/components/course/TeacherProfile";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,8 +39,8 @@ export default function CourseDetailPage() {
   }, [course, user]);
 
 
-  const handleEnroll = async () => {
-    if (!user || !firestore || !course || !courseRef) {
+  const handleEnroll = () => {
+    if (!user || !firestore || !courseRef) {
       toast({
         variant: "destructive",
         title: "Enrollment Failed",
@@ -48,36 +49,35 @@ export default function CourseDetailPage() {
       return;
     }
 
-    try {
-      // Use the non-blocking function to add the enrollment document
-      const enrollmentsCollection = collection(firestore, `enrollments`);
-      addDocumentNonBlocking(enrollmentsCollection, {
-        id: uuidv4(),
-        studentId: user.uid,
-        courseId: course.id,
-        enrollmentDate: serverTimestamp(),
-      });
+    const updateData = {
+      enrolledStudentIds: arrayUnion(user.uid)
+    };
 
-      // Update the course document to include the student's ID using a non-blocking call
-      // This is allowed by security rules for authenticated users.
-      updateDoc(courseRef, {
-        enrolledStudentIds: arrayUnion(user.uid)
-      });
-      
-      toast({
-        title: "Enrollment Successful!",
-        description: `You have enrolled in "${course.title}".`,
-      });
-      setIsEnrolled(true);
+    // Use non-blocking update to add user to the course
+    updateDoc(courseRef, updateData)
+      .then(() => {
+         toast({
+          title: "Enrollment Successful!",
+          description: `You have enrolled in "${course.title}".`,
+        });
+        setIsEnrolled(true);
+      })
+      .catch(async (serverError) => {
+        // Create and emit the contextual error
+        const permissionError = new FirestorePermissionError({
+          path: courseRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
 
-    } catch (error) {
-      console.error("Enrollment error: ", error);
-      toast({
-        variant: "destructive",
-        title: "Enrollment Failed",
-        description: "An error occurred while trying to enroll you. You may already be enrolled or there was a server issue.",
-      });
-    }
+        // Also show a user-friendly toast
+        toast({
+          variant: "destructive",
+          title: "Enrollment Failed",
+          description: "An error occurred while trying to enroll you. You may already be enrolled or there was a server issue.",
+        });
+    });
   };
 
   const isLoading = isCourseLoading || isAuthLoading;

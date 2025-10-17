@@ -28,18 +28,6 @@
       },
       "required": ["title", "description", "duration", "teacherId", "imageId"]
     },
-    "Enrollment": {
-      "title": "Enrollment",
-      "type": "object",
-      "description": "Represents the enrollment of a student in a course.",
-      "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the enrollment record." },
-        "studentId": { "type": "string", "description": "Reference to the User (Student) enrolled in the course." },
-        "courseId": { "type": "string", "description": "Reference to the Course the student is enrolled in." },
-        "enrollmentDate": { "type": "string", "description": "The date the student enrolled.", "format": "date-time" }
-      },
-      "required": ["studentId", "courseId", "enrollmentDate"]
-    },
     "Assignment": {
       "title": "Assignment",
       "type": "object",
@@ -73,7 +61,7 @@
         "definition": {
           "entityName": "Course",
           "schema": { "$ref": "#/entities/Course" },
-          "description": "Stores all course information. Publicly readable, but only teachers can create/update their own courses."
+          "description": "Stores all course information. Publicly readable, but only teachers can create/update their own courses. Students can enroll by updating the enrolledStudentIds array."
         }
       },
       {
@@ -82,14 +70,6 @@
           "entityName": "Assignment",
           "schema": { "$ref": "#/entities/Assignment" },
           "description": "Stores all assignments for a specific course. Teachers can create/update/delete. Enrolled students can read."
-        }
-      },
-      {
-        "path": "/enrollments/{enrollmentId}",
-        "definition": {
-          "entityName": "Enrollment",
-          "schema": { "$ref": "#/entities/Enrollment" },
-          "description": "Tracks all course enrollments. Can be queried by studentId or courseId."
         }
       }
     ]

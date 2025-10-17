@@ -2,31 +2,38 @@
  * @fileoverview Firestore Security Rules for Course Central.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles and enrollments,
- * while allowing public read access to course information.
+ * This ruleset enforces a user-ownership model for user profiles and enrollments,
+ * and allows public read access to courses while restricting creation to teachers.
  *
  * Data Structure:
- * - /users/{userId}: Stores individual user profiles, accessible only to the user themselves.
- * - /courses/{courseId}: Stores course details, publicly readable but write-protected.
- * - /users/{userId}/enrollments/{enrollmentId}: Tracks user-specific enrollments, accessible only to the user.
+ * - /users/{userId}: Stores user profiles, accessible only to the user themselves.
+ * - /courses/{courseId}: Stores course information, publicly readable, writable only by teachers.
+ * - /users/{userId}/enrollments/{enrollmentId}: Tracks enrollments for each user, accessible only to the user.
  *
  * Key Security Decisions:
- * - User listing is disallowed to protect user privacy.
- * - Courses are publicly readable to facilitate discovery, but only teachers can create/modify them (TODO: Implement teacher role).
- * - Enrollments are managed within user-specific subcollections, ensuring only the user can view or modify their own enrollments.
+ * - Users can only read and write their own user profiles.
+ * - Courses are publicly readable, but only teachers can create, update, or delete them.
+ * - Users can only manage their own enrollment records.
+ * - Listing users and enrollments is disallowed for security and privacy reasons.
  *
  * Denormalization for Authorization:
- * - The `Enrollment` document's `studentId` field MUST match the `userId` in the path to ensure ownership.
+ * The `Course` entity stores the `teacherId` to quickly determine the course owner.
+ * The `Enrollment` entity stores both `studentId` and `courseId` for easy rule enforcement.
+ *
+ * Structural Segregation:
+ * Enrollments are stored as a subcollection of the user document to enforce ownership.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secures user profiles, allowing only the user to read and write their own data.
+     * @description Enforces user-ownership for user profiles.
      * @path /users/{userId}
-     * @allow (get, create, update, delete) if the request is made by the user with matching userId.
-     * @deny (get, create, update, delete) if the request is made by a different user or unauthenticated user.
+     * @allow (get, update, delete) User with matching ID can access their own profile.
+     * @allow (create) User with matching ID can create their own profile.
+     * @deny (get, update, delete) User cannot access another user's profile.
+     * @deny (create) User cannot create a profile with a mismatched ID.
      * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
@@ -35,38 +42,63 @@ service cloud.firestore {
       }
 
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
+        return request.auth.uid == userId;
       }
 
-      allow get: if isOwner(userId);
-      allow list: if false; // User listing is not allowed.
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      function isExistingOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId && resource.data != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false; // Listing users is not permitted
+
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Manages course information, allowing public read access but restricting write access.
+     * @description Allows public read access to courses, but restricts creation, updates, and deletion to teachers.
      * @path /courses/{courseId}
-     * @allow (get, list) Public read access to course information.
-     * @allow (create) Only authenticated teachers can create courses (TODO: Implement teacher role check).
-     * @allow (update, delete) Only the teacher who created the course can update or delete it (TODO: Implement teacher role and ownership check).
-     * @deny (create, update, delete) if the request is made by a non-teacher or unauthenticated user.
-     * @principle Public read, owner-only writes (with teacher role).
+     * @allow (get, list) Anyone can read course information.
+     * @allow (create) Teacher can create a course with a matching teacherId.
+     * @allow (update, delete) Teacher can update or delete a course they own.
+     * @deny (create) Non-teacher cannot create courses.
+     * @deny (update, delete) Non-teacher cannot modify courses.
+     * @principle Public read, owner-only writes based on the teacherId field.
      */
     match /courses/{courseId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isTeacher() {
+        return isSignedIn() && request.auth.token.role == 'teacher';
+      }
+
+      function isCourseOwner(teacherId) {
+        return isSignedIn() && request.auth.uid == teacherId;
+      }
+
+      function isExistingCourseOwner() {
+        return isSignedIn() && request.auth.uid == resource.data.teacherId && resource.data != null;
+      }
+
       allow get, list: if true;
-      allow create: if isSignedIn(); // TODO: Implement teacher role check
-      allow update: if false; // TODO: Implement teacher role and ownership check
-      allow delete: if false; // TODO: Implement teacher role and ownership check
+
+      allow create: if isSignedIn() && isTeacher();
+      allow update: if isSignedIn() && isTeacher() && isExistingCourseOwner();
+      allow delete: if isSignedIn() && isTeacher() && isExistingCourseOwner();
     }
 
     /**
-     * @description Secures course enrollments within user-specific subcollections.
+     * @description Enforces user-ownership for enrollments, restricting access to a user's own enrollments.
      * @path /users/{userId}/enrollments/{enrollmentId}
-     * @allow (get, list, create, update, delete) if the request is made by the user with matching userId.
-     * @deny (get, list, create, update, delete) if the request is made by a different user or unauthenticated user.
-     * @principle Enforces document ownership for all operations within a user's data tree.
+     * @allow (get, update, delete) User with matching userId can access their own enrollments.
+     * @allow (create) User with matching userId can create enrollments for themselves.
+     * @deny (get, update, delete) User cannot access another user's enrollments.
+     * @deny (create) User cannot create enrollments for another user.
+     * @principle Enforces document ownership based on the userId path segment.
      */
     match /users/{userId}/enrollments/{enrollmentId} {
       function isSignedIn() {
@@ -74,17 +106,33 @@ service cloud.firestore {
       }
 
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
-      }
-        function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource.data);
+        return request.auth.uid == userId;
       }
 
-      allow get: if isOwner(userId);
-      allow list: if false; // Listing enrollments is not allowed.
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+       function isExistingOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId && resource.data != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false; // Listing enrollments is not permitted.  Changed from the original because list should not be permitted in the prototype mode.
+
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
+
+     /**
+      * @description Prevents direct creation of enrollments outside the /users/{userId} context.
+      * @path /enrollments
+      * @deny (create) No direct creation of enrollments.
+      * @principle Enforces enrollment creation only within the user's subcollection.
+      */
+      match /enrollments/{enrollmentId} {
+        allow get: if false;
+        allow list: if false;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
+      }
   }
 }
