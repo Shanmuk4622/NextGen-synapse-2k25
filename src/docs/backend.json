@@ -39,6 +39,19 @@
         "enrollmentDate": { "type": "string", "description": "The date the student enrolled.", "format": "date-time" }
       },
       "required": ["studentId", "courseId", "enrollmentDate"]
+    },
+    "Assignment": {
+      "title": "Assignment",
+      "type": "object",
+      "description": "Represents an assignment for a course.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the assignment." },
+        "courseId": { "type": "string", "description": "Reference to the Course this assignment belongs to." },
+        "title": { "type": "string", "description": "The title of the assignment." },
+        "description": { "type": "string", "description": "The description of the assignment." },
+        "dueDate": { "type": "string", "description": "The due date for the assignment.", "format": "date-time" }
+      },
+      "required": ["courseId", "title", "description", "dueDate"]
     }
   },
   "auth": {
@@ -60,6 +73,14 @@
           "entityName": "Course",
           "schema": { "$ref": "#/entities/Course" },
           "description": "Stores all course information. Publicly readable, but only teachers can create/update their own courses."
+        }
+      },
+      {
+        "path": "/courses/{courseId}/assignments/{assignmentId}",
+        "definition": {
+          "entityName": "Assignment",
+          "schema": { "$ref": "#/entities/Assignment" },
+          "description": "Stores all assignments for a specific course. Teachers can create/update/delete. Enrolled students can read."
         }
       },
       {

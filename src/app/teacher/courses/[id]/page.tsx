@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { PlusCircle, Users, BookOpen } from "lucide-react";
+import { PlusCircle, Users, BookOpen, FileText } from "lucide-react";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -15,10 +16,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useUser, useFirestore, useMemoFirebase, useDoc } from "@/firebase";
-import React from "react";
-import type { User as AppUser, Course } from "@/lib/types";
-import { doc } from "firebase/firestore";
+import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from "@/firebase";
+import React, { useState } from "react";
+import type { User as AppUser, Course, Assignment } from "@/lib/types";
+import { doc, collection, query } from "firebase/firestore";
+import { CreateAssignmentForm } from "@/components/course/CreateAssignmentForm";
 
 function StudentRow({ studentId }: { studentId: string }) {
     const firestore = useFirestore();
@@ -83,9 +85,52 @@ function EnrolledStudents({ studentIds }: { studentIds: string[] }) {
   );
 }
 
+function AssignmentList({ courseId }: { courseId: string }) {
+  const firestore = useFirestore();
+
+  const assignmentsQuery = useMemoFirebase(() => {
+    if (!firestore || !courseId) return null;
+    return query(collection(firestore, `courses/${courseId}/assignments`));
+  }, [firestore, courseId]);
+
+  const { data: assignments, isLoading } = useCollection<Assignment>(assignmentsQuery);
+
+  if (isLoading) {
+    return <p>Loading assignments...</p>
+  }
+  
+  if (!assignments || assignments.length === 0) {
+    return (
+      <div className="text-center py-10 border-2 border-dashed rounded-lg">
+        <h3 className="text-md font-semibold">No Assignments Created</h3>
+        <p className="mt-2 text-sm text-muted-foreground">Click "Add Assignment" to get started.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {assignments.map(assignment => (
+        <Card key={assignment.id} className="transition-shadow hover:shadow-md">
+          <CardHeader>
+            <CardTitle className="text-lg">{assignment.title}</CardTitle>
+            <CardDescription>
+              Due: {format(new Date(assignment.dueDate), "PPP")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{assignment.description}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 
 export default function TeacherCoursePage() {
   const { id } = useParams<{ id: string }>();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { user, isAuthLoading } = useUser();
   const firestore = useFirestore();
 
@@ -127,24 +172,21 @@ export default function TeacherCoursePage() {
                  <BookOpen className="h-6 w-6 text-primary" />
                 <CardTitle className="font-headline text-2xl">Assignments</CardTitle>
               </div>
-               <Dialog>
+               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" /> Add Assignment</Button></DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-[625px]">
                   <DialogHeader>
-                    <DialogTitle>Create New Assignment</DialogTitle>
+                    <DialogTitle className="font-headline text-2xl">Create New Assignment</DialogTitle>
                     <DialogDescription>
-                      This is a placeholder to show where the form to create a new assignment would go.
+                      Fill out the form below to add a new assignment to this course.
                     </DialogDescription>
                   </DialogHeader>
-                  <p>Assignment creation form would be here.</p>
+                  <CreateAssignmentForm courseId={course.id} onSuccess={() => setIsDialogOpen(false)} />
                 </DialogContent>
               </Dialog>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-10 border-2 border-dashed rounded-lg">
-                <h3 className="text-md font-semibold">No Assignments Created</h3>
-                <p className="mt-2 text-sm text-muted-foreground">Click "Add Assignment" to get started.</p>
-              </div>
+              <AssignmentList courseId={course.id} />
             </CardContent>
           </Card>
         </div>

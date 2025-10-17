@@ -25,3 +25,12 @@ export type Enrollment = {
   courseId: string;
   enrollmentDate: Date;
 };
+
+export type Assignment = {
+  id: string;
+  courseId: string;
+  title: string;
+  description: string;
+  dueDate: Date;
+  createdAt?: Date;
+};
