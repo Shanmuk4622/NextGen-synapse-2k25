@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Paperclip } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { collection, serverTimestamp } from "firebase/firestore";
 
@@ -30,6 +30,7 @@ const assignmentFormSchema = z.object({
   title: z.string().min(3, { message: "Title must be at least 3 characters." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
   dueDate: z.date({ required_error: "A due date is required." }),
+  attachment: z.any().optional(), // We'll handle file validation later
 });
 
 type AssignmentFormValues = z.infer<typeof assignmentFormSchema>;
@@ -54,11 +55,18 @@ export function CreateAssignmentForm({ courseId, onSuccess }: CreateAssignmentFo
   async function onSubmit(values: AssignmentFormValues) {
     if (!firestore || !courseId) return;
     
+    // NOTE: File upload logic is not implemented yet.
+    // We are preparing the data structure for when it is.
+    const attachmentUrl = ""; // Placeholder for the uploaded file URL
+    
     const assignmentId = uuidv4();
     const newAssignment = {
       id: assignmentId,
       courseId,
-      ...values,
+      title: values.title,
+      description: values.description,
+      dueDate: values.dueDate,
+      attachmentUrl: attachmentUrl,
       createdAt: serverTimestamp(),
     };
 
@@ -143,6 +151,26 @@ export function CreateAssignmentForm({ courseId, onSuccess }: CreateAssignmentFo
                   />
                 </PopoverContent>
               </Popover>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="attachment"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                <Paperclip className="w-4 h-4" />
+                Attach File (Optional)
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  type="file" 
+                  onChange={(e) => field.onChange(e.target.files ? e.target.files[0] : null)}
+                  className="pt-2 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

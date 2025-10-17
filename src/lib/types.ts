@@ -32,5 +32,6 @@ export type Assignment = {
   title: string;
   description: string;
   dueDate: Date;
+  attachmentUrl?: string;
   createdAt?: Date;
 };

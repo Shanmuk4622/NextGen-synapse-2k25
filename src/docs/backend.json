@@ -49,7 +49,8 @@
         "courseId": { "type": "string", "description": "Reference to the Course this assignment belongs to." },
         "title": { "type": "string", "description": "The title of the assignment." },
         "description": { "type": "string", "description": "The description of the assignment." },
-        "dueDate": { "type": "string", "description": "The due date for the assignment.", "format": "date-time" }
+        "dueDate": { "type": "string", "description": "The due date for the assignment.", "format": "date-time" },
+        "attachmentUrl": { "type": "string", "description": "URL to an optional attachment for the assignment." }
       },
       "required": ["courseId", "title", "description", "dueDate"]
     }
