@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Clock, BookOpen, CheckCircle } from "lucide-react";
-import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
-import { doc, collection, query, where, addDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
+import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection, addDocumentNonBlocking } from "@/firebase";
+import { doc, collection, query, where, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
 import type { Course, Enrollment } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
@@ -57,9 +57,11 @@ export default function CourseDetailPage() {
         courseId: course.id,
         enrollmentDate: serverTimestamp(),
       });
-      
-      // Also, update the course document to include the student's ID
-      await updateDoc(courseRef, {
+
+      // Update the course document to include the student's ID
+      // This is now allowed by the new security rules, but it's better to
+      // make this a non-blocking call for a better user experience.
+      updateDocumentNonBlocking(courseRef, {
         enrolledStudentIds: arrayUnion(user.uid)
       });
       
