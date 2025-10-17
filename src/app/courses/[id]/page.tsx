@@ -24,8 +24,7 @@ function TeacherProfile({ teacherName }: { teacherName: string }) {
   );
 }
 
-export default function CourseDetailPage({ params }: { params: { id: string } }) {
-  const id = params.id;
+export default function CourseDetailPage({ params: { id } }: { params: { id: string } }) {
   const { user, isAuthLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();

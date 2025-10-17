@@ -97,8 +97,7 @@ function EnrolledStudents({ courseId }: { courseId: string }) {
 }
 
 
-export default function TeacherCoursePage({ params }: { params: { id: string } }) {
-  const id = params.id;
+export default function TeacherCoursePage({ params: { id } }: { params: { id: string } }) {
   const { user, isAuthLoading } = useUser();
   const firestore = useFirestore();
 
