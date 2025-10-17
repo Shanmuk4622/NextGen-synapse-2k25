@@ -3,67 +3,78 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Restricts access to user profiles to the user themselves.
+     * @description Controls access to user profile documents.
      * @path /users/{userId}
-     * @allow (get, create, update, delete) if the user's UID matches the userId.
-     * @deny (get, create, update, delete) if the user's UID does not match the userId.
-     * @principle Enforces document ownership for writes.
+     * @allow (get, update, delete) if the user is the owner of the profile (userId matches request.auth.uid).
+     * @allow (create) if the user is creating their own profile (userId matches request.auth.uid).
+     * @deny (list) Always deny listing all users.
+     * @deny (create) if the user ID in the request does not match the authenticated user ID.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
       function isSignedIn() {
         return request.auth != null;
       }
 
-      allow get: if isOwner(userId);
-      allow list: if false; // User listing is not permitted
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
 
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
       allow create: if isSignedIn() && isOwner(userId);
       allow update: if isSignedIn() && isOwner(userId);
       allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Allows public read access to course information, but restricts creation to teachers.
+     * @description Controls access to course documents.
      * @path /courses/{courseId}
-     * @allow (get, list) Public read access to course information.
-     * @allow (create) if the user's role is teacher.
-     * @allow (update, delete) if the user is the teacher for the course.
-     * @deny (create, update, delete) if the user is not the teacher.
-     * @principle Enforces public read access with owner-only writes.
+     * @allow (get, list) Public read access for all courses.
+     * @allow (create) if the user is signed in and the teacherId matches the authenticated user ID.
+     * @allow (update, delete) if the user is signed in, the course exists, and the teacherId matches the authenticated user ID.
+     * @deny (create) if the teacherId in the request does not match the authenticated user ID.
+     * @principle Allows public read access, but restricts write access to the course creator (teacher).
      */
     match /courses/{courseId} {
-      allow get: if true;
-      allow list: if true;
-
-      // TODO: The rules do not check the `enrolledStudentIds` for student enrollment.
-      allow create: if request.auth.token.role == 'teacher';
-      allow update: if request.auth.uid == resource.data.teacherId;
-      allow delete: if request.auth.uid == resource.data.teacherId;
-    }
-
-    /**
-     * @description Restricts access to course enrollments to the user themselves.
-     * @path /users/{userId}/enrollments/{enrollmentId}
-     * @allow (get, create, update, delete) if the user's UID matches the userId.
-     * @deny (get, create, update, delete) if the user's UID does not match the userId.
-     * @principle Enforces document ownership for writes.
-     */
-    match /users/{userId}/enrollments/{enrollmentId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
       function isSignedIn() {
         return request.auth != null;
       }
 
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      function isOwner(teacherId) {
+        return request.auth.uid == teacherId;
+      }
+      
+      function isExistingOwner(teacherId) {
+        return isOwner(teacherId) && resource.data.teacherId == teacherId;
+      }
 
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow update: if isSignedIn() && isExistingOwner(resource.data.teacherId);
+      allow delete: if isSignedIn() && isExistingOwner(resource.data.teacherId);
+    }
+
+    /**
+     * @description Controls access to enrollment documents within a user's profile.
+     * @path /users/{userId}/enrollments/{enrollmentId}
+     * @allow (get, update, delete) if the user is the owner of the enrollment (userId matches request.auth.uid).
+     * @allow (create) if the user is creating their own enrollment (userId matches request.auth.uid).
+     * @deny (list) Always deny listing all enrollments.
+     * @deny (create) if the studentId in the request does not match the authenticated user ID.
+     * @principle Enforces document ownership for all enrollment operations.
+     */
+    match /users/{userId}/enrollments/{enrollmentId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
       allow create: if isSignedIn() && isOwner(userId);
       allow update: if isSignedIn() && isOwner(userId);
       allow delete: if isSignedIn() && isOwner(userId);

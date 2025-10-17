@@ -9,13 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Clock, BookOpen, CheckCircle } from "lucide-react";
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
-import { doc, arrayUnion, updateDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import type { Course } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import React, { useEffect, useState } from "react";
 import { TeacherProfile } from "@/components/course/TeacherProfile";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
+import { enrollInCourse } from "@/ai/flows/enroll-in-course";
 
 export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -39,8 +38,8 @@ export default function CourseDetailPage() {
   }, [course, user]);
 
 
-  const handleEnroll = () => {
-    if (!user || !firestore || !courseRef || !course) {
+  const handleEnroll = async () => {
+    if (!user || !id || !course) {
       toast({
         variant: "destructive",
         title: "Enrollment Failed",
@@ -49,35 +48,21 @@ export default function CourseDetailPage() {
       return;
     }
 
-    const updateData = {
-      enrolledStudentIds: arrayUnion(user.uid)
-    };
-
-    // Use non-blocking update to add user to the course
-    updateDoc(courseRef, updateData)
-      .then(() => {
-         toast({
-          title: "Enrollment Successful!",
-          description: `You have enrolled in "${course.title}".`,
-        });
-        setIsEnrolled(true);
-      })
-      .catch(async (serverError) => {
-        // Create and emit the contextual error
-        const permissionError = new FirestorePermissionError({
-          path: courseRef.path,
-          operation: 'update',
-          requestResourceData: updateData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-
-        // Also show a user-friendly toast
-        toast({
-          variant: "destructive",
-          title: "Enrollment Failed",
-          description: "An error occurred while trying to enroll you. You may already be enrolled or there was a server issue.",
-        });
-    });
+    try {
+      await enrollInCourse({ courseId: id });
+      toast({
+        title: "Enrollment Successful!",
+        description: `You have enrolled in "${course.title}".`,
+      });
+      // The useDoc hook will automatically update the UI when the backend update is reflected.
+    } catch (error: any) {
+      console.error("Enrollment failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Enrollment Failed",
+        description: error.message || "An error occurred while trying to enroll you.",
+      });
+    }
   };
 
   const isLoading = isCourseLoading || isAuthLoading;
