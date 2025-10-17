@@ -192,7 +192,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="lg:col-span-1">
-          <PersonalizedLearning />
+          <PersonalizedLearning appUser={appUser} />
         </div>
       </div>
     </div>

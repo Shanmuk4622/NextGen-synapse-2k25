@@ -9,18 +9,29 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { personalizedLearningPath, PersonalizedLearningPathOutput } from '@/ai/flows/personalized-learning-path';
+import { personalizedLearningPath, PersonalizedLearningPathOutput, PersonalizedLearningPathInput } from '@/ai/flows/personalized-learning-path';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import type { User as AppUser, Course } from '@/lib/types';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 const learningPathSchema = z.object({
   learningGoals: z.string().min(10, { message: 'Please describe your learning goals in at least 10 characters.' }),
 });
 
-export function PersonalizedLearning() {
+export function PersonalizedLearning({ appUser }: { appUser: AppUser }) {
   const [result, setResult] = useState<PersonalizedLearningPathOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const firestore = useFirestore();
+
+  const enrolledCoursesQuery = useMemoFirebase(() => {
+    if (!firestore || !appUser?.id) return null;
+    return query(collection(firestore, 'courses'), where('enrolledStudentIds', 'array-contains', appUser.id));
+  }, [firestore, appUser?.id]);
+
+  const { data: enrolledCourses } = useCollection<Course>(enrolledCoursesQuery);
 
   const form = useForm<z.infer<typeof learningPathSchema>>({
     resolver: zodResolver(learningPathSchema),
@@ -32,17 +43,28 @@ export function PersonalizedLearning() {
   async function onSubmit(values: z.infer<typeof learningPathSchema>) {
     setIsLoading(true);
     setResult(null);
+
+    if (!appUser) {
+        toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
+        setIsLoading(false);
+        return;
+    }
+
     try {
-      const mockInput = {
-        studentId: 'user-1',
-        currentCourses: ['course-1', 'course-3'],
+      const input: PersonalizedLearningPathInput = {
+        studentId: appUser.id,
+        currentCourses: enrolledCourses?.map(c => c.title) || [],
         learningGoals: values.learningGoals,
-        performanceData: { 'course-1': 'A', 'course-3': 'B+' },
-        knowledgeAssessment: 'Strong in HTML/CSS, basic understanding of Python, needs improvement in JavaScript asynchronous operations.',
-        currentTrends: 'Growing demand for full-stack developers with skills in both frontend and backend technologies.',
+        // These are example values. In a real app, you'd fetch this data.
+        performanceData: enrolledCourses?.reduce((acc, course) => {
+            acc[course.title] = 'Not tracked';
+            return acc;
+        }, {} as Record<string, any>) || {},
+        knowledgeAssessment: 'User has expressed interest in the specified learning goals.',
+        currentTrends: 'Growing demand for AI-powered applications and full-stack developers.',
       };
 
-      const response = await personalizedLearningPath(mockInput);
+      const response = await personalizedLearningPath(input);
       setResult(response);
     } catch (error) {
       console.error('Error generating learning path:', error);
