@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Clock, UserCircle, BookOpen, CheckCircle } from "lucide-react";
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
-import { doc, collection, query, where, addDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
+import { doc, collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Course, Enrollment } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
@@ -62,12 +62,6 @@ export default function CourseDetailPage() {
         enrollmentDate: serverTimestamp(),
       });
       
-      const courseDocRef = doc(firestore, "courses", course.id);
-      await updateDoc(courseDocRef, {
-        studentCount: increment(1)
-      });
-
-
       toast({
         title: "Enrollment Successful!",
         description: `You have enrolled in "${course.title}".`,
