@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Clock, BookOpen, CheckCircle } from "lucide-react";
-import { useUser, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc, arrayUnion } from 'firebase/firestore';
+import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { doc, arrayUnion, updateDoc } from 'firebase/firestore';
 import type { Course } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import React, { useEffect, useState } from "react";
@@ -40,7 +40,7 @@ export default function CourseDetailPage() {
 
 
   const handleEnroll = () => {
-    if (!user || !firestore || !courseRef) {
+    if (!user || !firestore || !courseRef || !course) {
       toast({
         variant: "destructive",
         title: "Enrollment Failed",
