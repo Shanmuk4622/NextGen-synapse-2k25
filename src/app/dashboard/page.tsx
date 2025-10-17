@@ -7,7 +7,7 @@ import { PersonalizedLearning } from '@/components/dashboard/PersonalizedLearnin
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { useMemo, useState, useEffect } from 'react';
 import type { User as AppUser, Course, Enrollment } from '@/lib/types';
 import { doc, collection, query, where, documentId } from 'firebase/firestore';
