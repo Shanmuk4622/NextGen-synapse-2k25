@@ -5,28 +5,22 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
 import { getFirestore, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
+import {
+  EnrollInCourseInputSchema,
+  type EnrollInCourseInput,
+  EnrollInCourseOutputSchema,
+  type EnrollInCourseOutput
+} from '@/ai/schemas/enrollment-schemas';
 
-// Initialize Firebase Admin on the server
+
+// Initialize Firebase on the server
 if (!getApps().length) {
   initializeApp(firebaseConfig);
 }
 const db = getFirestore();
-
-export const EnrollInCourseInputSchema = z.object({
-  courseId: z.string().describe('The ID of the course to enroll in.'),
-});
-export type EnrollInCourseInput = z.infer<typeof EnrollInCourseInputSchema>;
-
-export const EnrollInCourseOutputSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
-});
-export type EnrollInCourseOutput = z.infer<typeof EnrollInCourseOutputSchema>;
-
 
 export async function enrollInCourse(input: EnrollInCourseInput): Promise<EnrollInCourseOutput> {
   return enrollInCourseFlow(input);

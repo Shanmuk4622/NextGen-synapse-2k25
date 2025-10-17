@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from "next/image";
@@ -22,6 +21,7 @@ export default function CourseDetailPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
 
   const courseRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -47,14 +47,22 @@ export default function CourseDetailPage() {
       });
       return;
     }
+    
+    setIsEnrolling(true);
 
     try {
-      await enrollInCourse({ courseId: id });
-      toast({
-        title: "Enrollment Successful!",
-        description: `You have enrolled in "${course.title}".`,
-      });
-      // The useDoc hook will automatically update the UI when the backend update is reflected.
+      const result = await enrollInCourse({ courseId: id });
+      
+      if(result.success) {
+        toast({
+            title: "Enrollment Successful!",
+            description: `You have enrolled in "${course.title}".`,
+        });
+        // The useDoc hook will automatically update the UI when the backend update is reflected.
+      } else {
+        throw new Error(result.message);
+      }
+
     } catch (error: any) {
       console.error("Enrollment failed:", error);
       toast({
@@ -62,6 +70,8 @@ export default function CourseDetailPage() {
         title: "Enrollment Failed",
         description: error.message || "An error occurred while trying to enroll you.",
       });
+    } finally {
+        setIsEnrolling(false);
     }
   };
 
@@ -148,7 +158,9 @@ export default function CourseDetailPage() {
                 ) : (
                   <>
                     <p className="text-muted-foreground mb-4">Enroll now to get full access to the course content and assignments.</p>
-                    <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" onClick={handleEnroll} disabled={!user}>Enroll in Course</Button>
+                    <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" onClick={handleEnroll} disabled={!user || isEnrolling}>
+                        {isEnrolling ? 'Enrolling...' : 'Enroll in Course'}
+                    </Button>
                   </>
                 )}
               </CardContent>
