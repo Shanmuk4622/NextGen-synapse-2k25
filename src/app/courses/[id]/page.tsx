@@ -105,7 +105,7 @@ export default function CourseDetailPage() {
         <div className="container relative z-10 h-full flex flex-col justify-end pb-12">
           <h1 className="font-headline text-4xl md:text-6xl font-bold text-primary-foreground">{course.title}</h1>
           <div className="flex items-center gap-4 mt-4 text-primary-foreground/90">
-            <TeacherProfile teacherName={course.teacherName} />
+            <TeacherProfile teacherId={course.teacherId} />
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
               <span>{course.duration}</span>

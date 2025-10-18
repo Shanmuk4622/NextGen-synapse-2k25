@@ -9,8 +9,9 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { useMemo, useState, useEffect } from 'react';
-import type { User as AppUser, Course, Enrollment } from '@/lib/types';
-import { doc, collection, query, where, documentId } from 'firebase/firestore';
+import type { User as AppUser, Course } from '@/lib/types';
+import { doc, collection, query, where } from 'firebase/firestore';
+import { TeacherProfile } from '@/components/course/TeacherProfile';
 
 function EnrolledCourseCard({ course }: { course: Course }) {
   const [progress, setProgress] = useState(0);
@@ -41,7 +42,9 @@ function EnrolledCourseCard({ course }: { course: Course }) {
       <Card className="flex flex-col">
         <CardHeader>
           <CardTitle className="font-headline text-xl">{course.title}</CardTitle>
-          <CardDescription>by {course.teacherName || '...'}</CardDescription>
+          <CardDescription>
+            <TeacherProfile teacherId={course.teacherId} />
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow">
           <div className="space-y-2">

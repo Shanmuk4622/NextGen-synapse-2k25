@@ -65,7 +65,6 @@ export default function CreateCoursePage() {
       id: courseId,
       ...values,
       teacherId: user.uid,
-      teacherName: appUser.name,
       imageId: randomImage.id,
       enrolledStudentIds: [],
       createdAt: serverTimestamp(),

@@ -39,7 +39,7 @@ export function CourseCard({ course }: CourseCardProps) {
           <p className="text-muted-foreground text-sm line-clamp-3">{course.description}</p>
         </CardContent>
         <CardFooter className="flex justify-between items-center p-4 pt-0 text-sm text-muted-foreground">
-          <TeacherProfile teacherName={course.teacherName} />
+          <TeacherProfile teacherId={course.teacherId} />
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             <span>{course.duration}</span>

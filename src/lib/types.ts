@@ -14,7 +14,6 @@ export type Course = {
   description: string;
   duration: string; // e.g., "8 weeks"
   teacherId: string;
-  teacherName: string;
   imageId: string;
   enrolledStudentIds?: string[];
   createdAt?: Date;
