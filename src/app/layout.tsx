@@ -6,8 +6,6 @@ import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/common/Header';
 import { Footer } from '@/components/common/Footer';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { GenkitProvider } from '@/ai/provider';
-
 
 export const metadata: Metadata = {
   title: 'Course Central',
@@ -36,12 +34,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${playfair.variable} ${ptSans.variable}`}>
       <body className={cn('font-body antialiased min-h-screen flex flex-col')}>
         <FirebaseClientProvider>
-          <GenkitProvider>
             <Header />
             <main className="flex-grow">{children}</main>
             <Footer />
             <Toaster />
-          </GenkitProvider>
         </FirebaseClientProvider>
       </body>
     </html>
