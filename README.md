@@ -14,14 +14,6 @@ Course Central is a modern, AI-powered Learning Management System (LMS) prototyp
 - **Secure Course Enrollment:** Students can enroll in courses through a secure, authenticated process managed by a Genkit flow.
 - **Firebase Integration:** Built on a robust Firebase backend, utilizing Firestore for the database and Firebase Authentication for user management.
 
-## 📸 Screenshots
-
-*(These are placeholders. Replace them with actual screenshots of your application.)*
-
-| Homepage | Course Detail | Student Dashboard |
-| :---: | :---: | :---: |
-| ![Homepage Screenshot](https://placehold.co/600x400/E2E8F0/4A5568?text=Homepage) | ![Course Detail Screenshot](https://placehold.co/600x400/E2E8F0/4A5568?text=Course%20Detail) | ![Dashboard Screenshot](https://placehold.co/600x400/E2E8F0/4A5568?text=Dashboard) |
-
 ## 🛠️ Tech Stack
 
 - **Framework:** [Next.js](https://nextjs.org/) (App Router)
