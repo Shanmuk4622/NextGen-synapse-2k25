@@ -1,6 +1,6 @@
 # Course Central - A Modern Learning Management System
 
-![Course Central Hero](https://picsum.photos/seed/hero-readme/1200/628?data-ai-hint=learning%20environment)
+![Course Central Hero](/image.png)
 
 Course Central is a modern, AI-powered Learning Management System (LMS) prototype built with a cutting-edge tech stack. It provides a platform for both students and teachers to manage courses, track progress, and leverage AI for a personalized learning experience.
 
