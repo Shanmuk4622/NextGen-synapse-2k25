@@ -80,3 +80,7 @@ The generative AI features are powered by Genkit, an open-source framework for b
   - `personalized-learning-path.ts`: Generates course recommendations for students.
   - `enroll-in-course.ts`: Securely handles student enrollment in a course.
 - **Genkit Dev UI:** When running `npm run genkit:dev`, you can visit `http://localhost:4000` to inspect, run, and debug your AI flows in a dedicated developer UI.
+
+## about this project
+
+project is developed under the consedaration for the requrements for the LMS portal given in the instructions
